@@ -2,30 +2,52 @@
   "name": "@vnidrop/tauri-plugin-fs",
   "version": "0.0.1",
   "author": "AbassHammed",
-  "description": "",
+  "description": "Cross-platform filesystem manager for Tauri with Android SAF support.",
+  "keywords": [
+    "tauri",
+    "plugin",
+    "fs",
+    "filesystem",
+    "android",
+    "mobile"
+  ],
+  "license": "MIT OR Apache-2.0",
+  "sideEffects": false,
   "type": "module",
   "types": "./dist-js/index.d.ts",
   "main": "./dist-js/index.cjs",
   "module": "./dist-js/index.js",
   "exports": {
-    "types": "./dist-js/index.d.ts",
-    "import": "./dist-js/index.js",
-    "require": "./dist-js/index.cjs"
+    ".": {
+      "types": "./dist-js/index.d.ts",
+      "import": "./dist-js/index.js",
+      "require": "./dist-js/index.cjs"
+    },
+    "./android": {
+      "types": "./dist-js/android.d.ts",
+      "import": "./dist-js/android.js",
+      "require": "./dist-js/android.cjs"
+    }
   },
   "files": [
     "dist-js",
-    "README.md"
+    "README.md",
+    "LICENSE-APACHE.txt",
+    "LICENSE-MIT.txt"
   ],
   "scripts": {
     "build": "rollup -c"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "create-web-stream": "^1.1.1"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.0.0",
     "rollup": "^4.9.6",
-    "typescript": "^5.3.3",
-    "tslib": "^2.6.2"
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
   }
 }

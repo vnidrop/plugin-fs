@@ -6,21 +6,26 @@ import typescript from '@rollup/plugin-typescript'
 const pkg = JSON.parse(readFileSync(join(cwd(), 'package.json'), 'utf8'))
 
 export default {
-  input: 'guest-js/index.ts',
+  input: {
+    index: 'guest-js/index.ts',
+    android: 'guest-js/android.ts'
+  },
   output: [
     {
-      file: pkg.exports.import,
+      dir: dirname(pkg.exports['.'].import),
+      entryFileNames: '[name].js',
       format: 'esm'
     },
     {
-      file: pkg.exports.require,
+      dir: dirname(pkg.exports['.'].require),
+      entryFileNames: '[name].cjs',
       format: 'cjs'
     }
   ],
   plugins: [
     typescript({
       declaration: true,
-      declarationDir: dirname(pkg.exports.import)
+      declarationDir: dirname(pkg.exports['.'].import)
     })
   ],
   external: [
