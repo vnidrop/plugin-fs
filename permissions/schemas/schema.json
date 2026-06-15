@@ -295,22 +295,664 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the ping command without any pre-configured scope.",
+          "description": "This enables all commands except those that delete existing entries (such as remove, truncate, copy or write).",
           "type": "string",
-          "const": "allow-ping",
-          "markdownDescription": "Enables the ping command without any pre-configured scope."
+          "const": "all-without-delete",
+          "markdownDescription": "This enables all commands except those that delete existing entries (such as remove, truncate, copy or write)."
         },
         {
-          "description": "Denies the ping command without any pre-configured scope.",
+          "description": "This enables all commands.",
           "type": "string",
-          "const": "deny-ping",
-          "markdownDescription": "Denies the ping command without any pre-configured scope."
+          "const": "all",
+          "markdownDescription": "This enables all commands."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-ping`",
+          "description": "Enables the check_persisted_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-check-persisted-picker-uri-permission",
+          "markdownDescription": "Enables the check_persisted_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the check_persisted_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-check-persisted-picker-uri-permission",
+          "markdownDescription": "Denies the check_persisted_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the check_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-check-picker-uri-permission",
+          "markdownDescription": "Enables the check_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the check_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-check-picker-uri-permission",
+          "markdownDescription": "Denies the check_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the check_public_files_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-check-public-files-permission",
+          "markdownDescription": "Enables the check_public_files_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the check_public_files_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-check-public-files-permission",
+          "markdownDescription": "Denies the check_public_files_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the close_all_file_streams command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-close-all-file-streams",
+          "markdownDescription": "Enables the close_all_file_streams command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the close_all_file_streams command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-close-all-file-streams",
+          "markdownDescription": "Denies the close_all_file_streams command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the copy_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-copy-file",
+          "markdownDescription": "Enables the copy_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the copy_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-copy-file",
+          "markdownDescription": "Denies the copy_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the count_all_file_streams command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-count-all-file-streams",
+          "markdownDescription": "Enables the count_all_file_streams command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the count_all_file_streams command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-count-all-file-streams",
+          "markdownDescription": "Denies the count_all_file_streams command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-dir",
+          "markdownDescription": "Enables the create_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-dir",
+          "markdownDescription": "Denies the create_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_new_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-new-dir",
+          "markdownDescription": "Enables the create_new_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_new_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-new-dir",
+          "markdownDescription": "Denies the create_new_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_new_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-new-file",
+          "markdownDescription": "Enables the create_new_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_new_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-new-file",
+          "markdownDescription": "Denies the create_new_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_new_public_audio_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-new-public-audio-file",
+          "markdownDescription": "Enables the create_new_public_audio_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_new_public_audio_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-new-public-audio-file",
+          "markdownDescription": "Denies the create_new_public_audio_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_new_public_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-new-public-file",
+          "markdownDescription": "Enables the create_new_public_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_new_public_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-new-public-file",
+          "markdownDescription": "Denies the create_new_public_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_new_public_image_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-new-public-image-file",
+          "markdownDescription": "Enables the create_new_public_image_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_new_public_image_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-new-public-image-file",
+          "markdownDescription": "Denies the create_new_public_image_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_new_public_video_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-new-public-video-file",
+          "markdownDescription": "Enables the create_new_public_video_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_new_public_video_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-new-public-video-file",
+          "markdownDescription": "Denies the create_new_public_video_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_android_api_level command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-android-api-level",
+          "markdownDescription": "Enables the get_android_api_level command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_android_api_level command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-android-api-level",
+          "markdownDescription": "Denies the get_android_api_level command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_byte_length command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-byte-length",
+          "markdownDescription": "Enables the get_byte_length command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_byte_length command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-byte-length",
+          "markdownDescription": "Denies the get_byte_length command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_fs_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-fs-path",
+          "markdownDescription": "Enables the get_fs_path command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_fs_path command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-fs-path",
+          "markdownDescription": "Denies the get_fs_path command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_metadata command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-metadata",
+          "markdownDescription": "Enables the get_metadata command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_metadata command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-metadata",
+          "markdownDescription": "Denies the get_metadata command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_mime_type command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-mime-type",
+          "markdownDescription": "Enables the get_mime_type command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_mime_type command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-mime-type",
+          "markdownDescription": "Denies the get_mime_type command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-name",
+          "markdownDescription": "Enables the get_name command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-name",
+          "markdownDescription": "Denies the get_name command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_thumbnail command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-thumbnail",
+          "markdownDescription": "Enables the get_thumbnail command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_thumbnail command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-thumbnail",
+          "markdownDescription": "Denies the get_thumbnail command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_thumbnail_as_base64 command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-thumbnail-as-base64",
+          "markdownDescription": "Enables the get_thumbnail_as_base64 command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_thumbnail_as_base64 command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-thumbnail-as-base64",
+          "markdownDescription": "Denies the get_thumbnail_as_base64 command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_thumbnail_as_bytes command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-thumbnail-as-bytes",
+          "markdownDescription": "Enables the get_thumbnail_as_bytes command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_thumbnail_as_bytes command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-thumbnail-as-bytes",
+          "markdownDescription": "Denies the get_thumbnail_as_bytes command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_thumbnail_as_data_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-thumbnail-as-data-url",
+          "markdownDescription": "Enables the get_thumbnail_as_data_url command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_thumbnail_as_data_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-thumbnail-as-data-url",
+          "markdownDescription": "Denies the get_thumbnail_as_data_url command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_type command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-type",
+          "markdownDescription": "Enables the get_type command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_type command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-type",
+          "markdownDescription": "Denies the get_type command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the list_volumes command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-volumes",
+          "markdownDescription": "Enables the list_volumes command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_volumes command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-volumes",
+          "markdownDescription": "Denies the list_volumes command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_read_file_stream command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-read-file-stream",
+          "markdownDescription": "Enables the open_read_file_stream command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_read_file_stream command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-read-file-stream",
+          "markdownDescription": "Denies the open_read_file_stream command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_read_text_file_lines_stream command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-read-text-file-lines-stream",
+          "markdownDescription": "Enables the open_read_text_file_lines_stream command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_read_text_file_lines_stream command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-read-text-file-lines-stream",
+          "markdownDescription": "Denies the open_read_text_file_lines_stream command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_write_file_stream command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-write-file-stream",
+          "markdownDescription": "Enables the open_write_file_stream command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_write_file_stream command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-write-file-stream",
+          "markdownDescription": "Denies the open_write_file_stream command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the persist_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-persist-picker-uri-permission",
+          "markdownDescription": "Enables the persist_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the persist_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-persist-picker-uri-permission",
+          "markdownDescription": "Denies the persist_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-dir",
+          "markdownDescription": "Enables the read_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-dir",
+          "markdownDescription": "Denies the read_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-file",
+          "markdownDescription": "Enables the read_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-file",
+          "markdownDescription": "Denies the read_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_file_as_base64 command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-file-as-base64",
+          "markdownDescription": "Enables the read_file_as_base64 command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_file_as_base64 command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-file-as-base64",
+          "markdownDescription": "Denies the read_file_as_base64 command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_file_as_data_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-file-as-data-url",
+          "markdownDescription": "Enables the read_file_as_data_url command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_file_as_data_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-file-as-data-url",
+          "markdownDescription": "Denies the read_file_as_data_url command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_text_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-text-file",
+          "markdownDescription": "Enables the read_text_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_text_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-text-file",
+          "markdownDescription": "Denies the read_text_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the release_all_persisted_picker_uri_permissions command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-release-all-persisted-picker-uri-permissions",
+          "markdownDescription": "Enables the release_all_persisted_picker_uri_permissions command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the release_all_persisted_picker_uri_permissions command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-release-all-persisted-picker-uri-permissions",
+          "markdownDescription": "Denies the release_all_persisted_picker_uri_permissions command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the release_persisted_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-release-persisted-picker-uri-permission",
+          "markdownDescription": "Enables the release_persisted_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the release_persisted_picker_uri_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-release-persisted-picker-uri-permission",
+          "markdownDescription": "Denies the release_persisted_picker_uri_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the remove_dir_all command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-dir-all",
+          "markdownDescription": "Enables the remove_dir_all command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the remove_dir_all command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-dir-all",
+          "markdownDescription": "Denies the remove_dir_all command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the remove_empty_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-empty-dir",
+          "markdownDescription": "Enables the remove_empty_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the remove_empty_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-empty-dir",
+          "markdownDescription": "Denies the remove_empty_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the remove_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-file",
+          "markdownDescription": "Enables the remove_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the remove_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-file",
+          "markdownDescription": "Denies the remove_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the rename_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-rename-dir",
+          "markdownDescription": "Enables the rename_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the rename_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-rename-dir",
+          "markdownDescription": "Denies the rename_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the rename_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-rename-file",
+          "markdownDescription": "Enables the rename_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the rename_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-rename-file",
+          "markdownDescription": "Denies the rename_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the request_public_files_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-request-public-files-permission",
+          "markdownDescription": "Enables the request_public_files_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the request_public_files_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-request-public-files-permission",
+          "markdownDescription": "Denies the request_public_files_permission command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scan_public_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-scan-public-file",
+          "markdownDescription": "Enables the scan_public_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scan_public_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-scan-public-file",
+          "markdownDescription": "Denies the scan_public_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_public_file_pending command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-public-file-pending",
+          "markdownDescription": "Enables the set_public_file_pending command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_public_file_pending command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-public-file-pending",
+          "markdownDescription": "Denies the set_public_file_pending command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_open_dir_picker command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-open-dir-picker",
+          "markdownDescription": "Enables the show_open_dir_picker command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_open_dir_picker command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-open-dir-picker",
+          "markdownDescription": "Denies the show_open_dir_picker command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_open_file_picker command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-open-file-picker",
+          "markdownDescription": "Enables the show_open_file_picker command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_open_file_picker command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-open-file-picker",
+          "markdownDescription": "Denies the show_open_file_picker command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_save_file_picker command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-save-file-picker",
+          "markdownDescription": "Enables the show_save_file_picker command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_save_file_picker command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-save-file-picker",
+          "markdownDescription": "Denies the show_save_file_picker command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_share_file_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-share-file-dialog",
+          "markdownDescription": "Enables the show_share_file_dialog command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_share_file_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-share-file-dialog",
+          "markdownDescription": "Denies the show_share_file_dialog command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_view_dir_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-view-dir-dialog",
+          "markdownDescription": "Enables the show_view_dir_dialog command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_view_dir_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-view-dir-dialog",
+          "markdownDescription": "Denies the show_view_dir_dialog command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_view_file_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-view-file-dialog",
+          "markdownDescription": "Enables the show_view_file_dialog command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_view_file_dialog command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-view-file-dialog",
+          "markdownDescription": "Denies the show_view_file_dialog command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the truncate_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-truncate-file",
+          "markdownDescription": "Enables the truncate_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the truncate_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-truncate-file",
+          "markdownDescription": "Denies the truncate_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the write_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-write-file",
+          "markdownDescription": "Enables the write_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the write_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-write-file",
+          "markdownDescription": "Denies the write_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the write_text_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-write-text-file",
+          "markdownDescription": "Enables the write_text_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the write_text_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-write-text-file",
+          "markdownDescription": "Denies the write_text_file command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `all-without-delete`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-ping`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `all-without-delete`"
+        },
+        {
+          "description": "An empty permission you can use to modify the global scope.\n\n## Example\n\n```json\n{\n  \"permissions\": [\n    \"vnidrop-fs:all-without-delete\",\n    {\n      \"identifier\": \"vnidrop-fs:scope\",\n      \"allow\": [\n        \"$APPDATA/documents/**/*\"\n      ],\n      \"deny\": [\n        \"$APPDATA/documents/secret.txt\"\n      ]\n    }\n  ]\n}\n```\n",
+          "type": "string",
+          "const": "scope",
+          "markdownDescription": "An empty permission you can use to modify the global scope.\n\n## Example\n\n```json\n{\n  \"permissions\": [\n    \"vnidrop-fs:all-without-delete\",\n    {\n      \"identifier\": \"vnidrop-fs:scope\",\n      \"allow\": [\n        \"$APPDATA/documents/**/*\"\n      ],\n      \"deny\": [\n        \"$APPDATA/documents/secret.txt\"\n      ]\n    }\n  ]\n}\n```\n"
         }
       ]
     }
