@@ -8,7 +8,8 @@ const pkg = JSON.parse(readFileSync(join(cwd(), 'package.json'), 'utf8'))
 export default {
   input: {
     index: 'guest-js/index.ts',
-    android: 'guest-js/android.ts'
+    android: 'guest-js/android.ts',
+    ios: 'guest-js/ios.ts'
   },
   output: [
     {

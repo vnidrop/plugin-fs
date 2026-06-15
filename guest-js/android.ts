@@ -4,6 +4,10 @@ import { createReadableStream, createWritableStream } from 'create-web-stream'
 /** @ignore */
 declare global {
 	interface Window {
+		__TAURI_VNIDROP_FS_PLUGIN_INTERNALS__?: {
+			isAndroid: boolean
+			isIos: boolean
+		}
 		__TAURI_ANDROID_FS_PLUGIN_INTERNALS__?: {
 			isAndroid: boolean
 		}
@@ -18,6 +22,11 @@ declare global {
  * @since 22.0.0
  */
 export function isAndroid(): boolean {
+	const vnidropIsAndroid = window.__TAURI_VNIDROP_FS_PLUGIN_INTERNALS__?.isAndroid
+	if (vnidropIsAndroid !== undefined) {
+		return vnidropIsAndroid
+	}
+
 	const isAndroid = window.__TAURI_ANDROID_FS_PLUGIN_INTERNALS__?.isAndroid
 	if (isAndroid !== undefined) {
 		return isAndroid

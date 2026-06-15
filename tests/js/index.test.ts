@@ -42,11 +42,39 @@ const androidMock = vi.hoisted(() => ({
 	getMetadata: vi.fn(),
 }))
 
+const iosMock = vi.hoisted(() => ({
+	isIos: vi.fn(() => false),
+	readFile: vi.fn(),
+	readTextFile: vi.fn(),
+	writeFile: vi.fn(),
+	writeTextFile: vi.fn(),
+	readDir: vi.fn(),
+	createDir: vi.fn(),
+	showOpenFilePicker: vi.fn(),
+	showOpenDirPicker: vi.fn(),
+	showSaveFilePicker: vi.fn(),
+	createNewFile: vi.fn(),
+	createNewDir: vi.fn(),
+	copyFile: vi.fn(),
+	renameFile: vi.fn(),
+	renameDir: vi.fn(),
+	removeFile: vi.fn(),
+	removeEmptyDir: vi.fn(),
+	removeDirAll: vi.fn(),
+	exists: vi.fn(),
+	getMetadata: vi.fn(),
+	listSecurityScopedBookmarks: vi.fn(),
+}))
+
 vi.mock('@tauri-apps/plugin-fs', () => tauriFsMock)
 vi.mock('@tauri-apps/plugin-dialog', () => tauriDialogMock)
 vi.mock('../../guest-js/android', async importOriginal => ({
 	...await importOriginal<typeof import('../../guest-js/android')>(),
 	...androidMock,
+}))
+vi.mock('../../guest-js/ios', async importOriginal => ({
+	...await importOriginal<typeof import('../../guest-js/ios')>(),
+	...iosMock,
 }))
 
 describe('root package exports', () => {
@@ -56,6 +84,7 @@ describe('root package exports', () => {
 		expect(root).not.toHaveProperty('persistPickerUriPermission')
 		expect(root).not.toHaveProperty('createNewPublicFile')
 		expect(root).not.toHaveProperty('convertThumbnailSrc')
+		expect(root).not.toHaveProperty('listSecurityScopedBookmarks')
 	})
 
 	it('exposes Android-only functions from the android subpath entrypoint', async () => {
@@ -65,11 +94,21 @@ describe('root package exports', () => {
 		expect(android).toHaveProperty('createNewPublicFile')
 		expect(android).toHaveProperty('convertThumbnailSrc')
 	})
+
+	it('exposes iOS-only functions from the ios subpath entrypoint', async () => {
+		const ios = await import('../../guest-js/ios')
+
+		expect(ios).toHaveProperty('listSecurityScopedBookmarks')
+		expect(ios).toHaveProperty('resolveSecurityScopedBookmark')
+		expect(ios).toHaveProperty('releaseSecurityScopedBookmark')
+		expect(ios).toHaveProperty('persistSecurityScopedBookmark')
+	})
 })
 
 describe('platform capability helpers', () => {
 	beforeEach(() => {
 		androidMock.isAndroid.mockReturnValue(false)
+		iosMock.isIos.mockReturnValue(false)
 	})
 
 	it('reports desktop capabilities when Android is unavailable', async () => {
@@ -83,6 +122,7 @@ describe('platform capability helpers', () => {
 			supportsPublicStorage: false,
 			supportsPersistedPickerPermissions: false,
 			supportsThumbnails: false,
+			supportsSecurityScopedBookmarks: false,
 		})
 	})
 
@@ -98,6 +138,23 @@ describe('platform capability helpers', () => {
 			supportsPublicStorage: true,
 			supportsPersistedPickerPermissions: true,
 			supportsThumbnails: true,
+			supportsSecurityScopedBookmarks: false,
+		})
+	})
+
+	it('reports iOS capabilities when the runtime is iOS', async () => {
+		iosMock.isIos.mockReturnValue(true)
+		const fs = await import('../../guest-js/index')
+
+		expect(fs.isDesktop()).toBe(false)
+		expect(fs.getPlatformFsCapabilities()).toEqual({
+			platform: 'ios',
+			usesOfficialFs: false,
+			supportsAndroidUris: false,
+			supportsPublicStorage: false,
+			supportsPersistedPickerPermissions: false,
+			supportsThumbnails: false,
+			supportsSecurityScopedBookmarks: true,
 		})
 	})
 })
@@ -105,6 +162,7 @@ describe('platform capability helpers', () => {
 describe('desktop routing', () => {
 	beforeEach(() => {
 		androidMock.isAndroid.mockReturnValue(false)
+		iosMock.isIos.mockReturnValue(false)
 		tauriFsMock.readFile.mockResolvedValue(new Uint8Array([1, 2, 3]))
 		tauriFsMock.readTextFile.mockResolvedValue('hello')
 		tauriFsMock.writeFile.mockResolvedValue(undefined)
@@ -193,6 +251,7 @@ describe('desktop routing', () => {
 describe('Android routing', () => {
 	beforeEach(() => {
 		androidMock.isAndroid.mockReturnValue(true)
+		iosMock.isIos.mockReturnValue(false)
 		androidMock.readFile.mockResolvedValue(new Uint8Array([9]))
 		androidMock.readTextFile.mockResolvedValue('android')
 		androidMock.writeFile.mockResolvedValue(undefined)
@@ -246,5 +305,65 @@ describe('Android routing', () => {
 
 		await expect(fs.readDir('content://tree/root')).rejects.toThrow('readDir on Android requires an AndroidFsUri')
 		await expect(fs.createNewDir('content://tree/root' as never, 'nested')).rejects.toThrow('createNewDir on Android requires an AndroidFsUri')
+	})
+})
+
+describe('iOS routing', () => {
+	beforeEach(() => {
+		androidMock.isAndroid.mockReturnValue(false)
+		iosMock.isIos.mockReturnValue(true)
+		iosMock.readFile.mockResolvedValue(new Uint8Array([4]))
+		iosMock.readTextFile.mockResolvedValue('ios')
+		iosMock.writeFile.mockResolvedValue(undefined)
+		iosMock.writeTextFile.mockResolvedValue(undefined)
+		iosMock.readDir.mockResolvedValue([])
+		iosMock.createDir.mockResolvedValue({ uri: 'file:///dir/new', bookmarkId: 'dir-new', isDirectory: true })
+		iosMock.showOpenFilePicker.mockResolvedValue([{ uri: 'file:///file.txt', bookmarkId: 'file' }])
+		iosMock.showOpenDirPicker.mockResolvedValue({ uri: 'file:///dir', bookmarkId: 'dir', isDirectory: true })
+		iosMock.showSaveFilePicker.mockResolvedValue({ uri: 'file:///save.txt', bookmarkId: 'save' })
+		iosMock.createNewFile.mockResolvedValue({ uri: 'file:///dir/file.txt', bookmarkId: 'file' })
+		iosMock.createNewDir.mockResolvedValue({ uri: 'file:///dir/sub', bookmarkId: 'sub', isDirectory: true })
+		iosMock.removeDirAll.mockResolvedValue(undefined)
+		iosMock.exists.mockResolvedValue(true)
+	})
+
+	it('delegates portable calls to the iOS submodule', async () => {
+		const fs = await import('../../guest-js/index')
+		const base = { uri: 'file:///dir', bookmarkId: 'dir', isDirectory: true }
+
+		await fs.readFile(base)
+		await fs.readTextFile(base, { encoding: 'utf-8' })
+		await fs.writeFile(base, new Uint8Array([1]))
+		await fs.writeTextFile(base, 'body')
+		await fs.readDir(base, { limit: 10 })
+		await fs.createDir(base, 'nested')
+		await fs.showOpenFilePicker({ mimeTypes: 'text/plain' })
+		await fs.showOpenDirPicker()
+		await fs.showSaveFilePicker('note.txt', 'text/plain')
+		await fs.createNewFile(base, 'note.txt', 'text/plain')
+		await fs.createNewDir(base, 'nested')
+		await fs.removeDirAll(base)
+		await expect(fs.exists(base)).resolves.toBe(true)
+
+		expect(iosMock.readFile).toHaveBeenCalledWith(base)
+		expect(iosMock.readTextFile).toHaveBeenCalledWith(base, { encoding: 'utf-8' })
+		expect(iosMock.writeFile).toHaveBeenCalledWith(base, new Uint8Array([1]), undefined)
+		expect(iosMock.writeTextFile).toHaveBeenCalledWith(base, 'body', undefined)
+		expect(iosMock.readDir).toHaveBeenCalledWith(base, { limit: 10 })
+		expect(iosMock.createDir).toHaveBeenCalledWith(base, 'nested')
+		expect(iosMock.showOpenFilePicker).toHaveBeenCalledWith({ mimeTypes: 'text/plain' })
+		expect(iosMock.showOpenDirPicker).toHaveBeenCalledWith(undefined)
+		expect(iosMock.showSaveFilePicker).toHaveBeenCalledWith('note.txt', 'text/plain', undefined)
+		expect(iosMock.createNewFile).toHaveBeenCalledWith(base, 'note.txt', 'text/plain')
+		expect(iosMock.createNewDir).toHaveBeenCalledWith(base, 'nested')
+		expect(iosMock.removeDirAll).toHaveBeenCalledWith(base)
+		expect(iosMock.exists).toHaveBeenCalledWith(base)
+	})
+
+	it('rejects iOS directory operations that require an IosFsUri object', async () => {
+		const fs = await import('../../guest-js/index')
+
+		await expect(fs.readDir('file:///dir')).rejects.toThrow('readDir on iOS requires an IosFsUri')
+		await expect(fs.createNewDir('file:///dir' as never, 'nested')).rejects.toThrow('createNewDir on iOS requires an IosFsUri')
 	})
 })

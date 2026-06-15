@@ -12,6 +12,9 @@ fn all_permission_contains_mutating_and_picker_commands() {
 		"show_open_file_picker",
 		"persist_picker_uri_permission",
 		"create_new_public_file",
+		"writeFile",
+		"showOpenFilePicker",
+		"persistSecurityScopedBookmark",
 	] {
 		assert!(
 			contents.contains(&format!(r#""{command}""#)),
@@ -32,7 +35,18 @@ fn all_without_delete_excludes_destructive_commands() {
 	let contents = fs::read_to_string("permissions/all-without-delete.toml")
 		.expect("all-without-delete permission file should exist");
 
-	for command in ["remove_file", "remove_empty_dir", "remove_dir_all", "write_file", "copy_file"] {
+	for command in [
+		"remove_file",
+		"remove_empty_dir",
+		"remove_dir_all",
+		"write_file",
+		"copy_file",
+		"removeFile",
+		"removeEmptyDir",
+		"removeDirAll",
+		"writeFile",
+		"copyFile",
+	] {
 		assert!(
 			!contents.contains(&format!(r#""{command}""#)),
 			"all-without-delete should not include {command}"

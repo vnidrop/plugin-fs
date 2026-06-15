@@ -1,6 +1,7 @@
 import * as TauriDialog from '@tauri-apps/plugin-dialog'
 import * as TauriFs from '@tauri-apps/plugin-fs'
 import * as Android from './android'
+import * as Ios from './ios'
 
 export type {
 	AndroidEntryMetadata,
@@ -15,6 +16,19 @@ export type {
 	AndroidWriteTextFileOptions,
 } from './android'
 
+export type {
+	IosEntryMetadata,
+	IosEntryMetadataWithUri,
+	IosFsUri,
+	IosOpenDirPickerOptions,
+	IosOpenFilePickerOptions,
+	IosReadDirOptions,
+	IosReadTextFileOptions,
+	IosSaveFilePickerOptions,
+	IosWriteFileOptions,
+	IosWriteTextFileOptions,
+} from './ios'
+
 /**
  * Returns `true` when the current Tauri runtime is Android.
  *
@@ -24,10 +38,15 @@ export type {
 export const isAndroid = Android.isAndroid
 
 /**
+ * Returns `true` when the current Tauri runtime is iOS.
+ */
+export const isIos = Ios.isIos
+
+/**
  * A filesystem path accepted by the portable API.
  *
- * On desktop this is a normal Tauri filesystem path or `file://` URL. On
- * Android this can also be a content URI represented as a string/URL.
+ * On desktop and iOS this is a normal filesystem path or `file://` URL. On
+ * Android this can also be a `content://` URI represented as a string/URL.
  */
 export type FsPath = Android.FsPath
 
@@ -35,9 +54,11 @@ export type FsPath = Android.FsPath
  * A portable filesystem target.
  *
  * Desktop callers normally pass `string` or `URL` paths. Android callers may
- * also pass an `AndroidFsUri` returned by Android picker and storage APIs.
+ * also pass an `AndroidFsUri` returned by Android picker and storage APIs. iOS
+ * callers should pass the `IosFsUri` objects returned by iOS picker/bookmark
+ * APIs when accessing external document-provider files.
  */
-export type VnidropFsPath = Android.FsPath | Android.AndroidFsUri
+export type VnidropFsPath = Android.FsPath | Android.AndroidFsUri | Ios.IosFsUri
 
 export type DesktopReadFileOptions = Parameters<typeof TauriFs.readFile>[1]
 export type DesktopReadTextFileOptions = Parameters<typeof TauriFs.readTextFile>[1]
@@ -53,45 +74,47 @@ export type DesktopStatOptions = Parameters<typeof TauriFs.stat>[1]
 export type DesktopOpenDialogOptions = Parameters<typeof TauriDialog.open>[0]
 export type DesktopSaveDialogOptions = Parameters<typeof TauriDialog.save>[0]
 
-export type UnifiedReadTextFileOptions = Android.AndroidReadTextFileOptions | DesktopReadTextFileOptions
-export type UnifiedWriteFileOptions = Android.AndroidWriteFileOptions | DesktopWriteFileOptions
-export type UnifiedWriteTextFileOptions = Android.AndroidWriteTextFileOptions | DesktopWriteTextFileOptions
-export type UnifiedReadDirOptions = Android.AndroidReadDirOptions | DesktopReadDirOptions
+export type UnifiedReadTextFileOptions = Android.AndroidReadTextFileOptions | Ios.IosReadTextFileOptions | DesktopReadTextFileOptions
+export type UnifiedWriteFileOptions = Android.AndroidWriteFileOptions | Ios.IosWriteFileOptions | DesktopWriteFileOptions
+export type UnifiedWriteTextFileOptions = Android.AndroidWriteTextFileOptions | Ios.IosWriteTextFileOptions | DesktopWriteTextFileOptions
+export type UnifiedReadDirOptions = Android.AndroidReadDirOptions | Ios.IosReadDirOptions | DesktopReadDirOptions
 export type UnifiedRemoveDirAllOptions = DesktopRemoveOptions
 export type UnifiedRemoveEmptyDirOptions = DesktopRemoveOptions
 export type UnifiedExistsOptions = DesktopExistsOptions
 export type UnifiedMetadataOptions = DesktopStatOptions
-export type UnifiedOpenFilePickerOptions = Android.AndroidOpenFilePickerOptions | DesktopOpenDialogOptions
-export type UnifiedOpenDirPickerOptions = Android.AndroidOpenDirPickerOptions | DesktopOpenDialogOptions
-export type UnifiedSaveFilePickerOptions = Android.AndroidSaveFilePickerOptions | DesktopSaveDialogOptions
+export type UnifiedOpenFilePickerOptions = Android.AndroidOpenFilePickerOptions | Ios.IosOpenFilePickerOptions | DesktopOpenDialogOptions
+export type UnifiedOpenDirPickerOptions = Android.AndroidOpenDirPickerOptions | Ios.IosOpenDirPickerOptions | DesktopOpenDialogOptions
+export type UnifiedSaveFilePickerOptions = Android.AndroidSaveFilePickerOptions | Ios.IosSaveFilePickerOptions | DesktopSaveDialogOptions
 
 /**
  * A file selected by the portable file picker.
  *
- * Desktop returns a path string. Android returns an `AndroidFsUri`.
+ * Desktop returns a path string. Android returns an `AndroidFsUri`. iOS returns
+ * an `IosFsUri` with bookmark metadata when the provider supports it.
  */
-export type PickedFile = Android.AndroidFsUri | string
+export type PickedFile = Android.AndroidFsUri | Ios.IosFsUri | string
 
 /**
  * A directory selected by the portable directory picker.
  *
- * Desktop returns a path string. Android returns an `AndroidFsUri`.
+ * Desktop returns a path string. Android returns an `AndroidFsUri`. iOS returns
+ * an `IosFsUri` with `isDirectory: true`.
  */
-export type PickedDirectory = Android.AndroidFsUri | string
+export type PickedDirectory = Android.AndroidFsUri | Ios.IosFsUri | string
 
 /**
  * A destination selected by the portable save-file picker.
  *
- * Desktop returns a path string. Android returns an `AndroidFsUri`.
+ * Desktop returns a path string. Android and iOS return platform URI objects.
  */
-export type PickedSaveFile = Android.AndroidFsUri | string
+export type PickedSaveFile = Android.AndroidFsUri | Ios.IosFsUri | string
 
 /**
  * Describes the filesystem features available on the current platform.
  */
 export type PlatformFsCapabilities = {
 	/** Current platform bucket used by this package. */
-	platform: 'android' | 'desktop'
+	platform: 'android' | 'ios' | 'desktop'
 
 	/** `true` when portable operations delegate to official Tauri plugins. */
 	usesOfficialFs: boolean
@@ -107,20 +130,23 @@ export type PlatformFsCapabilities = {
 
 	/** `true` when Android provider thumbnail APIs are available. */
 	supportsThumbnails: boolean
+
+	/** `true` when iOS security-scoped bookmarks are available. */
+	supportsSecurityScopedBookmarks: boolean
 }
 
 /**
- * Returns `true` when the runtime is not Android.
+ * Returns `true` when the runtime is neither Android nor iOS.
  */
 export function isDesktop(): boolean {
-	return !Android.isAndroid()
+	return !Android.isAndroid() && !Ios.isIos()
 }
 
 /**
  * Returns a feature summary for the current platform.
  *
- * This is useful when UI code needs to hide Android-only workflows such as
- * persisted picker permissions, public storage, or provider thumbnails.
+ * This is useful when UI code needs to hide platform-specific workflows such
+ * as Android public storage or iOS security-scoped bookmark management.
  */
 export function getPlatformFsCapabilities(): PlatformFsCapabilities {
 	if (Android.isAndroid()) {
@@ -131,6 +157,19 @@ export function getPlatformFsCapabilities(): PlatformFsCapabilities {
 			supportsPublicStorage: true,
 			supportsPersistedPickerPermissions: true,
 			supportsThumbnails: true,
+			supportsSecurityScopedBookmarks: false,
+		}
+	}
+
+	if (Ios.isIos()) {
+		return {
+			platform: 'ios',
+			usesOfficialFs: false,
+			supportsAndroidUris: false,
+			supportsPublicStorage: false,
+			supportsPersistedPickerPermissions: false,
+			supportsThumbnails: false,
+			supportsSecurityScopedBookmarks: true,
 		}
 	}
 
@@ -141,6 +180,7 @@ export function getPlatformFsCapabilities(): PlatformFsCapabilities {
 		supportsPublicStorage: false,
 		supportsPersistedPickerPermissions: false,
 		supportsThumbnails: false,
+		supportsSecurityScopedBookmarks: false,
 	}
 }
 
@@ -149,6 +189,16 @@ function isAndroidFsUri(value: unknown): value is Android.AndroidFsUri {
 		typeof value === 'object' &&
 		value !== null &&
 		'uri' in value &&
+		typeof (value as { uri: unknown }).uri === 'string'
+	)
+}
+
+function isIosFsUri(value: unknown): value is Ios.IosFsUri {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'uri' in value &&
+		'bookmarkId' in value &&
 		typeof (value as { uri: unknown }).uri === 'string'
 	)
 }
@@ -198,6 +248,14 @@ function requireAndroidBaseUri(value: VnidropFsPath, method: string): Android.An
 	return value
 }
 
+function requireIosBaseUri(value: VnidropFsPath, method: string): Ios.IosFsUri {
+	if (!isIosFsUri(value)) {
+		throw new TypeError(`${method} on iOS requires an IosFsUri base directory.`)
+	}
+
+	return value
+}
+
 function mapDesktopOpenFilePickerOptions(options?: UnifiedOpenFilePickerOptions): DesktopOpenDialogOptions {
 	const mapped: DesktopOpenDialogOptions = {
 		...(options as DesktopOpenDialogOptions),
@@ -240,12 +298,12 @@ function mapDesktopSaveFilePickerOptions(
 /**
  * Reads an entire file as bytes.
  *
- * Desktop delegates to `@tauri-apps/plugin-fs.readFile`. Android delegates to
- * the native Android implementation and accepts `AndroidFsUri` values returned
- * by pickers or Android storage APIs.
+ * Desktop delegates to `@tauri-apps/plugin-fs.readFile`. Android and iOS
+ * delegate to native implementations and accept URI objects returned by their
+ * picker/storage APIs.
  *
- * @param path File path, file URL, or Android file URI.
- * @param options Desktop filesystem options. Ignored on Android.
+ * @param path File path, file URL, Android file URI, or iOS file URI.
+ * @param options Desktop filesystem options. Ignored on mobile.
  * @returns File contents as a `Uint8Array`.
  */
 export async function readFile(
@@ -253,7 +311,10 @@ export async function readFile(
 	options?: DesktopReadFileOptions
 ): Promise<Uint8Array<ArrayBuffer>> {
 	if (Android.isAndroid()) {
-		return Android.readFile(path)
+		return Android.readFile(path as Android.FsPath | Android.AndroidFsUri)
+	}
+	if (Ios.isIos()) {
+		return Ios.readFile(path as Ios.FsPath | Ios.IosFsUri)
 	}
 
 	return TauriFs.readFile(mapDesktopPath(path as Android.FsPath), options)
@@ -262,11 +323,12 @@ export async function readFile(
 /**
  * Reads an entire file as text.
  *
- * Desktop delegates to `@tauri-apps/plugin-fs.readTextFile`. Android reads
- * bytes through the native implementation and decodes them with `TextDecoder`.
+ * Desktop delegates to `@tauri-apps/plugin-fs.readTextFile`. Android and iOS
+ * read through native implementations and decode with the requested encoding
+ * where supported.
  *
- * @param path File path, file URL, or Android file URI.
- * @param options Desktop read options or Android text-decoding options.
+ * @param path File path, file URL, Android file URI, or iOS file URI.
+ * @param options Desktop read options or mobile text-decoding options.
  * @returns Decoded file contents.
  */
 export async function readTextFile(
@@ -274,7 +336,10 @@ export async function readTextFile(
 	options?: UnifiedReadTextFileOptions
 ): Promise<string> {
 	if (Android.isAndroid()) {
-		return Android.readTextFile(path, options as Android.AndroidReadTextFileOptions)
+		return Android.readTextFile(path as Android.FsPath | Android.AndroidFsUri, options as Android.AndroidReadTextFileOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.readTextFile(path as Ios.FsPath | Ios.IosFsUri, options as Ios.IosReadTextFileOptions)
 	}
 
 	return TauriFs.readTextFile(mapDesktopPath(path as Android.FsPath), options as DesktopReadTextFileOptions)
@@ -283,13 +348,13 @@ export async function readTextFile(
 /**
  * Writes bytes to a file.
  *
- * Desktop delegates to `@tauri-apps/plugin-fs.writeFile`. Android delegates to
- * the native Android writer and can write to picker/content URIs when the app
- * has write permission.
+ * Desktop delegates to `@tauri-apps/plugin-fs.writeFile`. Android and iOS
+ * delegate to native writers and can write to picker/provider URIs when the app
+ * has permission.
  *
- * @param path Destination path, file URL, or Android file URI.
+ * @param path Destination path, file URL, Android file URI, or iOS file URI.
  * @param data Bytes to write.
- * @param options Desktop write options or Android write options.
+ * @param options Desktop write options or mobile write options.
  */
 export async function writeFile(
 	path: VnidropFsPath,
@@ -297,7 +362,10 @@ export async function writeFile(
 	options?: UnifiedWriteFileOptions
 ): Promise<void> {
 	if (Android.isAndroid()) {
-		return Android.writeFile(path, data, options as Android.AndroidWriteFileOptions)
+		return Android.writeFile(path as Android.FsPath | Android.AndroidFsUri, data, options as Android.AndroidWriteFileOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.writeFile(path as Ios.FsPath | Ios.IosFsUri, data, options as Ios.IosWriteFileOptions)
 	}
 
 	return TauriFs.writeFile(mapDesktopPath(path as Android.FsPath), data, options as DesktopWriteFileOptions)
@@ -306,12 +374,12 @@ export async function writeFile(
 /**
  * Writes UTF-8 text to a file.
  *
- * Desktop delegates to `@tauri-apps/plugin-fs.writeTextFile`. Android encodes
- * the string as UTF-8 and writes through the native Android implementation.
+ * Desktop delegates to `@tauri-apps/plugin-fs.writeTextFile`. Android and iOS
+ * encode the string and write through native implementations.
  *
- * @param path Destination path, file URL, or Android file URI.
+ * @param path Destination path, file URL, Android file URI, or iOS file URI.
  * @param data Text to write.
- * @param options Desktop write options or Android write options.
+ * @param options Desktop write options or mobile write options.
  */
 export async function writeTextFile(
 	path: VnidropFsPath,
@@ -319,7 +387,10 @@ export async function writeTextFile(
 	options?: UnifiedWriteTextFileOptions
 ): Promise<void> {
 	if (Android.isAndroid()) {
-		return Android.writeTextFile(path, data, options as Android.AndroidWriteTextFileOptions)
+		return Android.writeTextFile(path as Android.FsPath | Android.AndroidFsUri, data, options as Android.AndroidWriteTextFileOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.writeTextFile(path as Ios.FsPath | Ios.IosFsUri, data, options as Ios.IosWriteTextFileOptions)
 	}
 
 	return TauriFs.writeTextFile(mapDesktopPath(path as Android.FsPath), data, options as DesktopWriteTextFileOptions)
@@ -328,18 +399,21 @@ export async function writeTextFile(
 /**
  * Reads the immediate children of a directory.
  *
- * Desktop returns Tauri `DirEntry` objects. Android returns metadata entries
- * that include each child's `AndroidFsUri`.
+ * Desktop returns Tauri `DirEntry` objects. Android and iOS return metadata
+ * entries that include each child's platform URI object.
  *
- * @param path Directory path on desktop, or an Android directory URI on Android.
- * @param options Desktop read-dir options or Android pagination options.
+ * @param path Directory path on desktop, or a platform directory URI on mobile.
+ * @param options Desktop read-dir options or mobile pagination options.
  */
 export async function readDir(
 	path: VnidropFsPath,
 	options?: UnifiedReadDirOptions
-): Promise<Android.AndroidEntryMetadataWithUri[] | Awaited<ReturnType<typeof TauriFs.readDir>>> {
+): Promise<Android.AndroidEntryMetadataWithUri[] | Ios.IosEntryMetadataWithUri[] | Awaited<ReturnType<typeof TauriFs.readDir>>> {
 	if (Android.isAndroid()) {
 		return Android.readDir(requireAndroidBaseUri(path, 'readDir'), options as Android.AndroidReadDirOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.readDir(requireIosBaseUri(path, 'readDir'), options as Ios.IosReadDirOptions)
 	}
 
 	return TauriFs.readDir(mapDesktopPath(path as Android.FsPath), options as DesktopReadDirOptions)
@@ -348,7 +422,7 @@ export async function readDir(
 /**
  * Creates a directory on desktop.
  *
- * On Android, use the overload that accepts a base `AndroidFsUri` and a
+ * On mobile, use the overload that accepts a platform base directory URI and a
  * relative path.
  */
 export async function createDir(
@@ -357,23 +431,33 @@ export async function createDir(
 ): Promise<void>
 
 /**
- * Creates or resolves a directory under an Android base directory URI.
+ * Creates or resolves a directory under an Android or iOS base directory URI.
  *
- * The base directory should come from Android directory picker or another
- * Android storage API. Missing parent directories are created by the native
- * Android implementation.
+ * The base directory should come from a mobile directory picker or another
+ * platform storage API. Missing parent directories are created by the native
+ * implementation where supported.
  */
 export async function createDir(
 	baseDirUri: Android.AndroidFsUri,
 	relativePath: string
 ): Promise<Android.AndroidFsUri>
 export async function createDir(
+	baseDirUri: Ios.IosFsUri,
+	relativePath: string
+): Promise<Ios.IosFsUri>
+export async function createDir(
 	pathOrBaseDir: VnidropFsPath,
 	optionsOrRelativePath?: DesktopMkdirOptions | string
-): Promise<void | Android.AndroidFsUri> {
+): Promise<void | Android.AndroidFsUri | Ios.IosFsUri> {
 	if (Android.isAndroid()) {
 		return Android.createDir(
 			requireAndroidBaseUri(pathOrBaseDir, 'createDir'),
+			typeof optionsOrRelativePath === 'string' ? optionsOrRelativePath : ''
+		)
+	}
+	if (Ios.isIos()) {
+		return Ios.createDir(
+			requireIosBaseUri(pathOrBaseDir, 'createDir'),
 			typeof optionsOrRelativePath === 'string' ? optionsOrRelativePath : ''
 		)
 	}
@@ -385,10 +469,10 @@ export async function createDir(
  * Opens a file picker.
  *
  * Desktop uses `@tauri-apps/plugin-dialog.open` and returns selected path
- * strings. Android uses the native Android picker and returns `AndroidFsUri`
- * objects. Cancellation returns an empty array.
+ * strings. Android and iOS use native pickers and return platform URI objects.
+ * Cancellation returns an empty array.
  *
- * @param options Desktop dialog options or Android picker options. Android
+ * @param options Desktop dialog options or mobile picker options. Mobile
  * `mimeTypes` are mapped to desktop dialog filters when possible.
  */
 export async function showOpenFilePicker(
@@ -396,6 +480,9 @@ export async function showOpenFilePicker(
 ): Promise<PickedFile[]> {
 	if (Android.isAndroid()) {
 		return Android.showOpenFilePicker(options as Android.AndroidOpenFilePickerOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.showOpenFilePicker(options as Ios.IosOpenFilePickerOptions)
 	}
 
 	const selected = await TauriDialog.open(mapDesktopOpenFilePickerOptions(options))
@@ -410,10 +497,11 @@ export async function showOpenFilePicker(
  * Opens a directory picker.
  *
  * Desktop uses `@tauri-apps/plugin-dialog.open` with directory selection.
- * Android uses the native Storage Access Framework directory picker.
+ * Android uses the native Storage Access Framework directory picker. iOS uses
+ * a native open-in-place document picker for directories.
  *
- * @param options Desktop dialog options or Android directory picker options.
- * @returns A desktop path string, an Android directory URI, or `null` when
+ * @param options Desktop dialog options or mobile directory picker options.
+ * @returns A desktop path string, a platform directory URI, or `null` when
  * canceled.
  */
 export async function showOpenDirPicker(
@@ -422,16 +510,19 @@ export async function showOpenDirPicker(
 	if (Android.isAndroid()) {
 		return Android.showOpenDirPicker(options as Android.AndroidOpenDirPickerOptions)
 	}
+	if (Ios.isIos()) {
+		return Ios.showOpenDirPicker(options as Ios.IosOpenDirPickerOptions)
+	}
 
 	const selected = await TauriDialog.open(mapDesktopOpenDirPickerOptions(options))
 	return Array.isArray(selected) ? (selected[0] ?? null) : selected
 }
 
 /**
- * Opens a save-file picker on Android.
+ * Opens a save-file picker on mobile.
  *
- * Android requires an initial file name and optional MIME type. Desktop callers
- * may use the object-options overload below instead.
+ * Android and iOS require an initial file name and optional MIME type. Desktop
+ * callers may use the object-options overload below instead.
  */
 export async function showSaveFilePicker(
 	defaultFileName: string,
@@ -460,6 +551,13 @@ export async function showSaveFilePicker(
 			options as Android.AndroidSaveFilePickerOptions
 		)
 	}
+	if (Ios.isIos()) {
+		return Ios.showSaveFilePicker(
+			typeof defaultFileNameOrOptions === 'string' ? defaultFileNameOrOptions : '',
+			mimeType,
+			options as Ios.IosSaveFilePickerOptions
+		)
+	}
 
 	return TauriDialog.save(mapDesktopSaveFilePickerOptions(defaultFileNameOrOptions, options))
 }
@@ -478,10 +576,10 @@ export async function createNewFile(
 ): Promise<Android.FsPath>
 
 /**
- * Creates a new Android file under a base directory URI.
+ * Creates a new Android or iOS file under a base directory URI.
  *
- * If a file with the same name exists, Android appends a sequence number using
- * provider-specific behavior. The returned URI points to the created file.
+ * If a file with the same name exists, the native implementation creates a
+ * unique name. The returned URI points to the created file.
  */
 export async function createNewFile(
 	baseDirUri: Android.AndroidFsUri,
@@ -489,13 +587,25 @@ export async function createNewFile(
 	mimeType?: string | null
 ): Promise<Android.AndroidFsUri>
 export async function createNewFile(
+	baseDirUri: Ios.IosFsUri,
+	relativePath: string,
+	mimeType?: string | null
+): Promise<Ios.IosFsUri>
+export async function createNewFile(
 	pathOrBaseDirUri: VnidropFsPath,
 	optionsOrRelativePath?: DesktopCreateOptions | string,
 	mimeType: string | null = null
-): Promise<Android.FsPath | Android.AndroidFsUri> {
+): Promise<Android.FsPath | Android.AndroidFsUri | Ios.IosFsUri> {
 	if (Android.isAndroid()) {
 		return Android.createNewFile(
 			requireAndroidBaseUri(pathOrBaseDirUri, 'createNewFile'),
+			typeof optionsOrRelativePath === 'string' ? optionsOrRelativePath : '',
+			mimeType
+		)
+	}
+	if (Ios.isIos()) {
+		return Ios.createNewFile(
+			requireIosBaseUri(pathOrBaseDirUri, 'createNewFile'),
 			typeof optionsOrRelativePath === 'string' ? optionsOrRelativePath : '',
 			mimeType
 		)
@@ -523,23 +633,32 @@ export async function createNewDir(
 ): Promise<Android.FsPath>
 
 /**
- * Creates a new Android directory under a base directory URI.
+ * Creates a new Android or iOS directory under a base directory URI.
  *
- * If a directory with the same name exists, Android appends a sequence number
- * using provider-specific behavior. The returned URI points to the created
- * directory.
+ * If a directory with the same name exists, the native implementation creates a
+ * unique name. The returned URI points to the created directory.
  */
 export async function createNewDir(
 	baseDirUri: Android.AndroidFsUri,
 	relativePath: string
 ): Promise<Android.AndroidFsUri>
 export async function createNewDir(
+	baseDirUri: Ios.IosFsUri,
+	relativePath: string
+): Promise<Ios.IosFsUri>
+export async function createNewDir(
 	pathOrBaseDirUri: VnidropFsPath,
 	optionsOrRelativePath?: DesktopMkdirOptions | string
-): Promise<Android.FsPath | Android.AndroidFsUri> {
+): Promise<Android.FsPath | Android.AndroidFsUri | Ios.IosFsUri> {
 	if (Android.isAndroid()) {
 		return Android.createNewDir(
 			requireAndroidBaseUri(pathOrBaseDirUri, 'createNewDir'),
+			typeof optionsOrRelativePath === 'string' ? optionsOrRelativePath : ''
+		)
+	}
+	if (Ios.isIos()) {
+		return Ios.createNewDir(
+			requireIosBaseUri(pathOrBaseDirUri, 'createNewDir'),
 			typeof optionsOrRelativePath === 'string' ? optionsOrRelativePath : ''
 		)
 	}
@@ -556,12 +675,12 @@ export async function createNewDir(
  * Copies one file to another location.
  *
  * Desktop reads the source with `@tauri-apps/plugin-fs.readFile` and writes the
- * destination with `writeFile`. Android uses the native copy operation so it
- * can work with content URIs when permissions allow.
+ * destination with `writeFile`. Android and iOS use native copy operations so
+ * they can work with provider URIs when permissions allow.
  *
- * @param srcPath Source file path or Android URI.
- * @param destPath Destination file path or Android URI.
- * @param options Android copy options. Ignored on desktop.
+ * @param srcPath Source file path or platform URI.
+ * @param destPath Destination file path or platform URI.
+ * @param options Android copy options. Ignored on desktop and iOS.
  */
 export async function copyFile(
 	srcPath: VnidropFsPath,
@@ -569,7 +688,14 @@ export async function copyFile(
 	options?: Android.AndroidCopyFileOptions
 ): Promise<void> {
 	if (Android.isAndroid()) {
-		return Android.copyFile(srcPath, destPath, options)
+		return Android.copyFile(
+			srcPath as Android.FsPath | Android.AndroidFsUri,
+			destPath as Android.FsPath | Android.AndroidFsUri,
+			options
+		)
+	}
+	if (Ios.isIos()) {
+		return Ios.copyFile(srcPath as Ios.FsPath | Ios.IosFsUri, destPath as Ios.FsPath | Ios.IosFsUri)
 	}
 
 	const data = await TauriFs.readFile(mapDesktopPath(srcPath as Android.FsPath))
@@ -579,19 +705,22 @@ export async function copyFile(
 /**
  * Renames a file.
  *
- * Desktop renames from one path to another. Android renames a file URI to a
- * new entry name and returns the new URI.
+ * Desktop renames from one path to another. Android and iOS rename a file URI
+ * to a new entry name and return the new URI.
  *
- * @param pathOrUri Desktop source path or Android file URI.
- * @param newPathOrName Desktop destination path, or Android new file name.
+ * @param pathOrUri Desktop source path or mobile file URI.
+ * @param newPathOrName Desktop destination path, or mobile new file name.
  */
 export async function renameFile(
 	pathOrUri: VnidropFsPath,
 	newPathOrName: string,
 	options?: DesktopRenameOptions
-): Promise<void | Android.AndroidFsUri> {
+): Promise<void | Android.AndroidFsUri | Ios.IosFsUri> {
 	if (Android.isAndroid()) {
 		return Android.renameFile(requireAndroidBaseUri(pathOrUri, 'renameFile'), newPathOrName)
+	}
+	if (Ios.isIos()) {
+		return Ios.renameFile(requireIosBaseUri(pathOrUri, 'renameFile'), newPathOrName)
 	}
 
 	return TauriFs.rename(mapDesktopPath(pathOrUri as Android.FsPath), newPathOrName, options)
@@ -600,19 +729,22 @@ export async function renameFile(
 /**
  * Renames a directory.
  *
- * Desktop renames from one path to another. Android renames a directory URI to
- * a new entry name and returns the new URI.
+ * Desktop renames from one path to another. Android and iOS rename a directory
+ * URI to a new entry name and return the new URI.
  *
- * @param pathOrUri Desktop source path or Android directory URI.
- * @param newPathOrName Desktop destination path, or Android new directory name.
+ * @param pathOrUri Desktop source path or mobile directory URI.
+ * @param newPathOrName Desktop destination path, or mobile new directory name.
  */
 export async function renameDir(
 	pathOrUri: VnidropFsPath,
 	newPathOrName: string,
 	options?: DesktopRenameOptions
-): Promise<void | Android.AndroidFsUri> {
+): Promise<void | Android.AndroidFsUri | Ios.IosFsUri> {
 	if (Android.isAndroid()) {
 		return Android.renameDir(requireAndroidBaseUri(pathOrUri, 'renameDir'), newPathOrName)
+	}
+	if (Ios.isIos()) {
+		return Ios.renameDir(requireIosBaseUri(pathOrUri, 'renameDir'), newPathOrName)
 	}
 
 	return TauriFs.rename(mapDesktopPath(pathOrUri as Android.FsPath), newPathOrName, options)
@@ -621,12 +753,15 @@ export async function renameDir(
 /**
  * Removes a file.
  *
- * Desktop removes a path with `@tauri-apps/plugin-fs.remove`. Android removes
- * the file represented by an `AndroidFsUri`.
+ * Desktop removes a path with `@tauri-apps/plugin-fs.remove`. Android and iOS
+ * remove the file represented by a platform URI object.
  */
 export async function removeFile(pathOrUri: VnidropFsPath): Promise<void> {
 	if (Android.isAndroid()) {
 		return Android.removeFile(requireAndroidBaseUri(pathOrUri, 'removeFile'))
+	}
+	if (Ios.isIos()) {
+		return Ios.removeFile(requireIosBaseUri(pathOrUri, 'removeFile'))
 	}
 
 	return TauriFs.remove(mapDesktopPath(pathOrUri as Android.FsPath))
@@ -636,7 +771,7 @@ export async function removeFile(pathOrUri: VnidropFsPath): Promise<void> {
  * Removes an empty directory.
  *
  * Desktop delegates to `@tauri-apps/plugin-fs.remove` without forcing
- * recursion. Android uses the native empty-directory removal operation.
+ * recursion. Android and iOS use native empty-directory removal operations.
  */
 export async function removeEmptyDir(
 	pathOrUri: VnidropFsPath,
@@ -644,6 +779,9 @@ export async function removeEmptyDir(
 ): Promise<void> {
 	if (Android.isAndroid()) {
 		return Android.removeEmptyDir(requireAndroidBaseUri(pathOrUri, 'removeEmptyDir'))
+	}
+	if (Ios.isIos()) {
+		return Ios.removeEmptyDir(requireIosBaseUri(pathOrUri, 'removeEmptyDir'))
 	}
 
 	return TauriFs.remove(mapDesktopPath(pathOrUri as Android.FsPath), options)
@@ -653,7 +791,7 @@ export async function removeEmptyDir(
  * Removes a directory and all of its contents.
  *
  * Desktop delegates to `@tauri-apps/plugin-fs.remove` with `recursive: true`.
- * Android uses the native recursive directory removal operation.
+ * Android and iOS use native recursive directory removal operations.
  */
 export async function removeDirAll(
 	pathOrUri: VnidropFsPath,
@@ -662,6 +800,9 @@ export async function removeDirAll(
 	if (Android.isAndroid()) {
 		return Android.removeDirAll(requireAndroidBaseUri(pathOrUri, 'removeDirAll'))
 	}
+	if (Ios.isIos()) {
+		return Ios.removeDirAll(requireIosBaseUri(pathOrUri, 'removeDirAll'))
+	}
 
 	return TauriFs.remove(mapDesktopPath(pathOrUri as Android.FsPath), { ...options, recursive: true })
 }
@@ -669,38 +810,44 @@ export async function removeDirAll(
 /**
  * Checks whether a file or directory exists.
  *
- * Desktop delegates to `@tauri-apps/plugin-fs.exists`. Android attempts to
- * read the target type and returns `false` if the target cannot be resolved.
+ * Desktop delegates to `@tauri-apps/plugin-fs.exists`. Android and iOS attempt
+ * native resolution and return `false` if the target cannot be resolved.
  */
 export async function exists(
-	path: Android.FsPath,
+	path: VnidropFsPath,
 	options?: UnifiedExistsOptions
 ): Promise<boolean> {
 	if (Android.isAndroid()) {
 		try {
-			await Android.getType(path)
+			await Android.getType(path as Android.FsPath | Android.AndroidFsUri)
 			return true
 		}
 		catch {
 			return false
 		}
 	}
+	if (Ios.isIos()) {
+		return Ios.exists(path as Ios.FsPath | Ios.IosFsUri)
+	}
 
-	return TauriFs.exists(mapDesktopPath(path), options)
+	return TauriFs.exists(mapDesktopPath(path as Android.FsPath), options)
 }
 
 /**
  * Reads metadata for a file or directory.
  *
- * Desktop returns Tauri `FileInfo`. Android returns Android entry metadata,
- * including MIME type and byte length for files.
+ * Desktop returns Tauri `FileInfo`. Android and iOS return mobile entry
+ * metadata, including MIME type and byte length for files.
  */
 export async function getMetadata(
 	path: VnidropFsPath,
 	options?: UnifiedMetadataOptions
-): Promise<Android.AndroidEntryMetadata | Awaited<ReturnType<typeof TauriFs.stat>>> {
+): Promise<Android.AndroidEntryMetadata | Ios.IosEntryMetadata | Awaited<ReturnType<typeof TauriFs.stat>>> {
 	if (Android.isAndroid()) {
-		return Android.getMetadata(path)
+		return Android.getMetadata(path as Android.FsPath | Android.AndroidFsUri)
+	}
+	if (Ios.isIos()) {
+		return Ios.getMetadata(path as Ios.FsPath | Ios.IosFsUri)
 	}
 
 	return TauriFs.stat(mapDesktopPath(path as Android.FsPath), options)

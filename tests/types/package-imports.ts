@@ -15,6 +15,11 @@ import {
 	persistPickerUriPermission,
 	type AndroidFsUri,
 } from '@vnidrop/tauri-plugin-fs/android'
+import {
+	listSecurityScopedBookmarks,
+	persistSecurityScopedBookmark,
+	type IosFsUri,
+} from '@vnidrop/tauri-plugin-fs/ios'
 
 async function checkRootImports(path: string): Promise<void> {
 	await writeTextFile(path, 'body')
@@ -41,5 +46,14 @@ async function checkAndroidImports(uri: AndroidFsUri): Promise<void> {
 	void thumbnailUrl
 }
 
+async function checkIosImports(uri: IosFsUri): Promise<void> {
+	const persisted = await persistSecurityScopedBookmark(uri)
+	const bookmarks: IosFsUri[] = await listSecurityScopedBookmarks()
+
+	void persisted
+	void bookmarks
+}
+
 void checkRootImports
 void checkAndroidImports
+void checkIosImports

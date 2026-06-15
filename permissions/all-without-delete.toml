@@ -48,5 +48,22 @@ commands.allow = [
     "show_save_file_picker",
     "show_share_file_dialog",
     "show_view_file_dialog",
-    "show_view_dir_dialog"
+    "show_view_dir_dialog",
+    "listSecurityScopedBookmarks",
+    "resolveSecurityScopedBookmark",
+    "releaseSecurityScopedBookmark",
+    "persistSecurityScopedBookmark",
+    "readFile",
+    "readTextFile",
+    "readDir",
+    "createDir",
+    "createNewFile",
+    "createNewDir",
+    "renameFile",
+    "renameDir",
+    "exists",
+    "getMetadata",
+    "showOpenFilePicker",
+    "showOpenDirPicker",
+    "showSaveFilePicker"
 ]
