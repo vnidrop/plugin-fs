@@ -1,0 +1,82 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  workflow_dispatch:
+
+jobs:
+  host:
+    name: JS and Rust
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run check
+
+  android-jvm:
+    name: Android JVM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Gradle wrapper
+        id: gradle-wrapper
+        run: |
+          if [ -x ./gradlew ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: android
+      - uses: actions/setup-java@v4
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+      - run: ./gradlew testDebugUnitTest
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        working-directory: android
+      - run: echo "Skipping Android JVM tests because android/gradlew is not committed."
+        if: ${{ steps.gradle-wrapper.outputs.available != 'true' }}
+
+  android-emulator:
+    name: Android Emulator Smoke
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Gradle wrapper
+        id: gradle-wrapper
+        run: |
+          if [ -x ./gradlew ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: android
+      - uses: actions/setup-java@v4
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+      - uses: reactivecircus/android-emulator-runner@v2
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          working-directory: android
+          script: ./gradlew connectedDebugAndroidTest
+      - run: echo "Skipping Android emulator smoke because android/gradlew is not committed."
+        if: ${{ steps.gradle-wrapper.outputs.available != 'true' }}

@@ -65,3 +65,40 @@ pub struct ContentProtocolCacheConfig {
     #[serde(default)]
     pub ttl: Option<u64>,
 }*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn config_deserializes_protocol_enable_flags() {
+        let config: Config = serde_json::from_value(json!({
+            "thumbnailProtocol": {
+                "enable": true
+            },
+            "contentProtocol": {
+                "enable": true
+            }
+        }))
+        .expect("config should deserialize");
+
+        assert!(config.thumbnail_protocol.enable);
+        assert!(config.content_protocol.enable);
+    }
+
+    #[test]
+    fn config_rejects_unknown_fields() {
+        let err = match serde_json::from_value::<Config>(json!({
+            "thumbnailProtocol": {
+                "enable": true,
+                "unexpected": true
+            }
+        })) {
+            Ok(_) => panic!("unknown protocol fields must be rejected"),
+            Err(err) => err,
+        };
+
+        assert!(err.to_string().contains("unknown field"));
+    }
+}

@@ -127,6 +127,23 @@ pub fn encode_android_uri_component(input: impl AsRef<str>) -> String {
     percent_encoding::utf8_percent_encode(input.as_ref(), SAFE).to_string()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn android_uri_component_encoding_matches_android_safe_characters() {
+        assert_eq!(
+            encode_android_uri_component("space and/@#$%"),
+            "space%20and%2F%40%23%24%25"
+        );
+        assert_eq!(
+            encode_android_uri_component("_-!.~'()*"),
+            "_-!.~'()*"
+        );
+    }
+}
+
 #[cfg(target_os = "android")]
 pub fn range_to_offset_and_len(range: impl std::ops::RangeBounds<u64>) -> (u128, Option<u128>) {
     use std::ops::Bound::{Included, Excluded, Unbounded};

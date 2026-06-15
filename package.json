@@ -36,7 +36,12 @@
     "LICENSE-MIT.txt"
   ],
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "test": "vitest run",
+    "test:android:jvm": "cd android && ./gradlew testDebugUnitTest",
+    "test:android:connected": "cd android && ./gradlew connectedDebugAndroidTest",
+    "test:types": "tsc -p tsconfig.test.json --noEmit",
+    "check": "npm run build && npm run test && npm run test:types && cargo check --all-features && cargo test"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
@@ -48,6 +53,7 @@
     "@rollup/plugin-typescript": "^12.0.0",
     "rollup": "^4.9.6",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.9"
   }
 }

@@ -169,3 +169,29 @@ impl Serialize for crate::Error {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn raw_error_serializes_as_message() {
+        let error = crate::Error::with("permission denied by scope");
+
+        assert_eq!(
+            serde_json::to_value(error).expect("error should serialize"),
+            serde_json::json!("permission denied by scope")
+        );
+    }
+
+    #[test]
+    fn io_error_serializes_as_io_message() {
+        let error = crate::Error::from(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "fixture missing",
+        ));
+
+        assert_eq!(
+            serde_json::to_value(error).expect("error should serialize"),
+            serde_json::json!("fixture missing")
+        );
+    }
+}

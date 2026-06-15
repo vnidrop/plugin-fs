@@ -192,6 +192,16 @@ The first production target is desktop plus Android. iOS native parity is not
 implemented yet. Desktop-style app-scoped file access should continue to be
 handled through the official Tauri filesystem plugin where supported by Tauri.
 
+## Testing
+
+Run the fast host suite with:
+
+```sh
+npm run check
+```
+
+See `TESTING.md` for the full JS, Rust, Android JVM, emulator, and CI strategy.
+
 ## Attribution
 
 The Android implementation is adapted from
