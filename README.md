@@ -4,9 +4,9 @@
 filesystem manager for Tauri v2.
 
 It delegates desktop filesystem work to the official `@tauri-apps/plugin-fs`
-package and provides an Android-native implementation for Storage Access
-Framework, public storage, picker URI permissions, thumbnails, streams, and
-share/view intents.
+package, provides an Android-native implementation for Storage Access
+Framework/public storage, and includes an iOS-native document picker backend
+with security-scoped bookmark support.
 
 ## Install
 
@@ -60,15 +60,17 @@ import {
   removeFile,
   removeDirAll,
   isAndroid,
+  isIos,
   getPlatformFsCapabilities,
 } from '@vnidrop/tauri-plugin-fs'
 ```
 
-On desktop these functions call `@tauri-apps/plugin-fs`. On Android they call
-the native `plugin:vnidrop-fs|...` commands.
+On desktop these functions call `@tauri-apps/plugin-fs` and
+`@tauri-apps/plugin-dialog`. On Android and iOS they call native
+`plugin:vnidrop-fs|...` commands.
 
 Picker APIs are also exposed at the top level. They return desktop paths on
-desktop and Android URI objects on Android:
+desktop, Android URI objects on Android, and iOS URI/bookmark objects on iOS:
 
 ```ts
 const files = await showOpenFilePicker({ multiple: true, mimeTypes: ['image/*'] })
@@ -121,6 +123,43 @@ await writeTextFile(uri, 'Report body', { create: false })
 await scanPublicFile(uri)
 ```
 
+## iOS API
+
+iOS shared filesystem calls work with `IosFsUri` objects returned by the iOS
+file, directory, and save pickers. External document-provider URLs are opened in
+place and persisted with security-scoped bookmarks so they can be resolved again
+after app restart.
+
+```ts
+import {
+  showOpenDirPicker,
+  createNewFile,
+  writeTextFile,
+} from '@vnidrop/tauri-plugin-fs'
+import {
+  listSecurityScopedBookmarks,
+  resolveSecurityScopedBookmark,
+  releaseSecurityScopedBookmark,
+} from '@vnidrop/tauri-plugin-fs/ios'
+
+const dir = await showOpenDirPicker()
+if (dir) {
+  const file = await createNewFile(dir, 'notes.txt', 'text/plain')
+  await writeTextFile(file, 'Hello from iOS')
+}
+
+const bookmarks = await listSecurityScopedBookmarks()
+const first = bookmarks[0]?.bookmarkId
+if (first) {
+  const uri = await resolveSecurityScopedBookmark(first)
+  await releaseSecurityScopedBookmark(uri.bookmarkId!)
+}
+```
+
+The iOS subpath intentionally contains only security-scoped bookmark lifecycle
+helpers and `isIos()`. Android public storage, thumbnails, stream resources, and
+share/view intents remain Android-only APIs.
+
 ## Permissions
 
 Use the generated Vnidrop permissions in your capability file:
@@ -149,7 +188,8 @@ For unrestricted development or internal tools you can use:
 
 The Android implementation enforces Tauri-style scope checks for file-path
 access. Android `content://` URIs obtained from pickers are controlled by
-Android URI permissions.
+Android URI permissions. iOS external URLs are controlled by security-scoped
+bookmarks stored by the native plugin.
 
 ## Optional Android Features
 
@@ -188,9 +228,11 @@ If you use a Content Security Policy, allow:
 
 ## iOS Status
 
-The first production target is desktop plus Android. iOS native parity is not
-implemented yet. Desktop-style app-scoped file access should continue to be
-handled through the official Tauri filesystem plugin where supported by Tauri.
+iOS supports the shared root API for picked files and directories:
+read/write, directory listing, create, unique create, copy, rename, remove,
+metadata, existence checks, and file/directory/save pickers. iOS does not
+implement Android-specific public storage, thumbnail, stream, or share/view
+APIs.
 
 ## Testing
 
@@ -200,7 +242,8 @@ Run the fast host suite with:
 npm run check
 ```
 
-See `TESTING.md` for the full JS, Rust, Android JVM, emulator, and CI strategy.
+See `TESTING.md` for the full JS, Rust, Swift, Android JVM, emulator, and CI
+strategy.
 
 ## Attribution
 
