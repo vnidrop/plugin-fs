@@ -15,6 +15,14 @@ use utils::*;
 pub use api::models::*;
 pub use api::consts::*;
 
+#[cfg(target_os = "ios")]
+tauri::ios_plugin_binding!(init_plugin_vnidrop_fs);
+
+#[cfg(target_os = "ios")]
+pub(crate) struct IosFs<R: tauri::Runtime> {
+    handle: tauri::plugin::PluginHandle<R>,
+}
+
 /// Initializes the plugin.
 /// 
 /// # Usage
@@ -49,6 +57,10 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, Option<config:
                     app.manage(protocols::new_config_state(api.config().as_ref(), app));
                 }
             }
+            #[cfg(target_os = "ios")] {
+                let handle = api.register_ios_plugin(init_plugin_vnidrop_fs)?;
+                app.manage(IosFs { handle });
+            }
             #[cfg(not(target_os = "android"))] {
                 let afs_sync = crate::api::api_sync::AndroidFs::<R> { handle: Default::default() };
                 let afs_async = crate::api::api_async::AndroidFs::<R> { handle: Default::default() };
@@ -62,7 +74,9 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, Option<config:
     #[cfg(feature = "commands")]
     let builder = builder
         .js_init_script(format!(
-            "window.__TAURI_ANDROID_FS_PLUGIN_INTERNALS__ = {{ isAndroid: {} }};",
+            "window.__TAURI_VNIDROP_FS_PLUGIN_INTERNALS__ = {{ isAndroid: {}, isIos: {} }}; window.__TAURI_ANDROID_FS_PLUGIN_INTERNALS__ = {{ isAndroid: {} }};",
+            cfg!(target_os = "android"),
+            cfg!(target_os = "ios"),
             cfg!(target_os = "android")
         ))
         .invoke_handler(tauri::generate_handler![
