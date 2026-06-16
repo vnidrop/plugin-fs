@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - "fix*"
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - "fix*"
+      - "fix/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Host Checks
+    runs-on: macos-latest
+    concurrency:
+      group: ci-host-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run JS, type, and Rust checks
+        run: npm run check
+
+      - name: Run iOS Swift tests
+        run: npm run test:ios
+
+      - name: Check example app wiring
+        run: npm run example:check
+
+  android-jvm:
+    name: Android JVM Tests
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-android-jvm-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Gradle wrapper
+        id: gradle-wrapper
+        working-directory: android
+        run: |
+          if [ -x ./gradlew ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Java
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        uses: android-actions/setup-android@v3
+
+      - name: Run Android JVM tests
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        working-directory: android
+        run: ./gradlew testDebugUnitTest
+
+      - name: Skip Android JVM tests
+        if: ${{ steps.gradle-wrapper.outputs.available != 'true' }}
+        run: echo "Skipping Android JVM tests because android/gradlew is not committed."
+
+  android-emulator:
+    name: Android Emulator Smoke
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    concurrency:
+      group: ci-android-emulator-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Gradle wrapper
+        id: gradle-wrapper
+        working-directory: android
+        run: |
+          if [ -x ./gradlew ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Java
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        uses: android-actions/setup-android@v3
+
+      - name: Run emulator smoke tests
+        if: ${{ steps.gradle-wrapper.outputs.available == 'true' }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          working-directory: android
+          script: ./gradlew connectedDebugAndroidTest
+
+      - name: Skip emulator smoke tests
+        if: ${{ steps.gradle-wrapper.outputs.available != 'true' }}
+        run: echo "Skipping Android emulator smoke because android/gradlew is not committed."

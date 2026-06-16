@@ -19,6 +19,12 @@ This runs:
 - `cargo check --all-features`
 - `cargo test`
 
+Check the example app wiring separately:
+
+```sh
+npm run example:check
+```
+
 ## JavaScript Tests
 
 ```sh
@@ -111,7 +117,15 @@ that is difficult to make deterministic.
 
 ## CI Policy
 
-Every pull request should run host checks:
+The default CI workflow runs on pushes and pull requests for:
+
+- `main`
+- `master`
+- `develop`
+- `fix*` and `fix/**`
+
+Each test group has a concurrency key per branch/ref so newer pushes cancel
+older runs for the same group. Host checks include:
 
 - JS build
 - Vitest
@@ -119,8 +133,9 @@ Every pull request should run host checks:
 - `cargo check --all-features`
 - `cargo test`
 - Swift iOS core tests
+- example app wiring checks
 
-Android JVM tests should run on every pull request. Emulator smoke tests should
-run on pull requests when Android code changes, on a nightly schedule, or
-manually before releases. Broader Android API matrices are release-branch/manual
-checks, not the default PR path.
+Android JVM tests run in CI when the Android Gradle wrapper is available.
+Emulator smoke tests are manual through `workflow_dispatch` so normal PR checks
+stay cheap. Broader Android API matrices are release-branch/manual checks, not
+the default PR path.
