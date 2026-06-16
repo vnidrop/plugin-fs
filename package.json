@@ -48,8 +48,9 @@
     "test:android:connected": "cd android && ./gradlew connectedDebugAndroidTest",
     "test:ios": "cd ios && swift test",
     "test:types": "tsc -p tsconfig.test.json --noEmit",
+    "example:install": "cd examples/tauri-app && npm ci",
     "example:build": "cd examples/tauri-app && npm run build",
-    "example:check": "npm run example:build && cd examples/tauri-app/src-tauri && cargo check",
+    "example:check": "npm run example:install && npm run example:build && cd examples/tauri-app/src-tauri && cargo check",
     "check": "npm run build && npm run test && npm run test:types && cargo check --all-features && cargo test"
   },
   "dependencies": {
