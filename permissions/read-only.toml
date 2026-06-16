@@ -1,0 +1,44 @@
+"$schema" = "schemas/schema.json"
+
+[[permission]]
+identifier = "read-only"
+description = "This enables read-only commands and non-mutating picker/metadata helpers."
+commands.allow = [
+    "get_android_api_level",
+    "get_name",
+    "get_byte_length",
+    "get_type",
+    "get_mime_type",
+    "get_metadata",
+    "get_thumbnail",
+    "get_thumbnail_as_bytes",
+    "get_thumbnail_as_base64",
+    "get_thumbnail_as_data_url",
+    "get_fs_path",
+    "list_volumes",
+    "check_public_files_permission",
+    "count_all_file_streams",
+    "close_all_file_streams",
+    "open_read_file_stream",
+    "open_read_text_file_lines_stream",
+    "read_file",
+    "read_file_as_base64",
+    "read_file_as_data_url",
+    "read_text_file",
+    "read_dir",
+    "check_picker_uri_permission",
+    "check_persisted_picker_uri_permission",
+    "show_open_file_picker",
+    "show_open_dir_picker",
+    "show_view_file_dialog",
+    "show_view_dir_dialog",
+    "listSecurityScopedBookmarks",
+    "resolveSecurityScopedBookmark",
+    "readFile",
+    "readTextFile",
+    "readDir",
+    "exists",
+    "getMetadata",
+    "showOpenFilePicker",
+    "showOpenDirPicker"
+]

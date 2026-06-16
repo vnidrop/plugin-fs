@@ -943,10 +943,16 @@
           "markdownDescription": "Denies the write_text_file command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `all-without-delete`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `read-only`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `all-without-delete`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `read-only`"
+        },
+        {
+          "description": "This enables read-only commands and non-mutating picker/metadata helpers.",
+          "type": "string",
+          "const": "read-only",
+          "markdownDescription": "This enables read-only commands and non-mutating picker/metadata helpers."
         },
         {
           "description": "An empty permission you can use to modify the global scope.\n\n## Example\n\n```json\n{\n  \"permissions\": [\n    \"vnidrop-fs:all-without-delete\",\n    {\n      \"identifier\": \"vnidrop-fs:scope\",\n      \"allow\": [\n        \"$APPDATA/documents/**/*\"\n      ],\n      \"deny\": [\n        \"$APPDATA/documents/secret.txt\"\n      ]\n    }\n  ]\n}\n```\n",

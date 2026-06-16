@@ -1,5 +1,5 @@
 [default]
 description = "Default permissions for the plugin"
 permissions = [
-    "all-without-delete"
+    "read-only"
 ]
