@@ -1,36 +1,45 @@
-# Vnidrop FS Tauri Plugin
+# Vnidrop FS
 
-`@vnidrop/tauri-plugin-fs` / `tauri-plugin-vnidrop-fs` is a cross-platform
-filesystem manager for Tauri v2.
+Cross-platform filesystem APIs for Tauri v2.
 
-It delegates desktop filesystem work to the official `@tauri-apps/plugin-fs`
-package, provides an Android-native implementation for Storage Access
-Framework/public storage, and includes an iOS-native document picker backend
-with security-scoped bookmark support.
+`@vnidrop/tauri-plugin-fs` and `tauri-plugin-vnidrop-fs` provide one TypeScript
+API for desktop, Android, and iOS file workflows:
 
-## Install
+- Desktop delegates to the official `@tauri-apps/plugin-fs` and
+  `@tauri-apps/plugin-dialog` packages.
+- Android uses a native backend for Storage Access Framework, public storage,
+  persisted URI permissions, thumbnails, streams, and share/view intents.
+- iOS uses native document pickers, open-in-place file access, and
+  security-scoped bookmarks for external files and folders.
+
+This package is useful when a Tauri app needs desktop filesystem behavior plus
+mobile file handling that works with Android content URIs and iOS document
+provider URLs.
+
+## Installation
+
+Install the JavaScript package in your Tauri app:
+
+```sh
+npm install @vnidrop/tauri-plugin-fs @tauri-apps/plugin-fs @tauri-apps/plugin-dialog
+```
+
+Add the Rust plugin and the official desktop plugins to `src-tauri/Cargo.toml`:
 
 ```toml
-# src-tauri/Cargo.toml
 [dependencies]
-tauri-plugin-vnidrop-fs = { path = "../path/to/plugin-fs" }
+tauri-plugin-vnidrop-fs = "0.1"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 ```
 
-```json
-{
-  "dependencies": {
-    "@vnidrop/tauri-plugin-fs": "file:../path/to/plugin-fs",
-    "@tauri-apps/plugin-fs": "^2.0.0",
-    "@tauri-apps/plugin-dialog": "^2.0.0"
-  }
-}
+When developing from this repository, use local paths instead:
+
+```toml
+tauri-plugin-vnidrop-fs = { path = "../../" }
 ```
 
-Register these plugins in your Tauri app. The official filesystem plugin is
-required for desktop file operations, and the official dialog plugin is required
-for desktop file/folder pickers.
+Register all three plugins in your Tauri app:
 
 ```rust
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -44,125 +53,29 @@ pub fn run() {
 }
 ```
 
-## Common API
-
-```ts
-import {
-  readFile,
-  readTextFile,
-  writeFile,
-  writeTextFile,
-  readDir,
-  createDir,
-  showOpenFilePicker,
-  showOpenDirPicker,
-  showSaveFilePicker,
-  removeFile,
-  removeDirAll,
-  isAndroid,
-  isIos,
-  getPlatformFsCapabilities,
-} from '@vnidrop/tauri-plugin-fs'
-```
-
-On desktop these functions call `@tauri-apps/plugin-fs` and
-`@tauri-apps/plugin-dialog`. On Android and iOS they call native
-`plugin:vnidrop-fs|...` commands.
-
-Picker APIs are also exposed at the top level. They return desktop paths on
-desktop, Android URI objects on Android, and iOS URI/bookmark objects on iOS:
-
-```ts
-const files = await showOpenFilePicker({ multiple: true, mimeTypes: ['image/*'] })
-const folder = await showOpenDirPicker()
-const destination = await showSaveFilePicker('export.json', 'application/json')
-```
-
-Android directory creation and unique entry creation use Android base-directory
-URIs returned by the directory picker. Import Android-specific helpers from the
-Android subpath:
-
-```ts
-import { createDir, createNewFile, writeTextFile, showOpenDirPicker } from '@vnidrop/tauri-plugin-fs/android'
-
-const baseDir = await showOpenDirPicker()
-if (baseDir) {
-  const imagesDir = await createDir(baseDir, 'images')
-  const file = await createNewFile(imagesDir, 'hello.txt', 'text/plain')
-  await writeTextFile(file, 'Hello from Android SAF')
-}
-```
-
-## Android API
-
-Android-specific capabilities are exposed as named functions from
-`@vnidrop/tauri-plugin-fs/android`:
-
-- file, directory, and save pickers
-- persisted picker URI permissions
-- public storage creation, scanning, pending state, and volumes
-- metadata, MIME type, thumbnails, and content protocol URLs
-- read/write streams and line streams
-- share and view dialogs
-
-```ts
-import {
-  AndroidPublicGeneralPurposeDir,
-  createNewPublicFile,
-  scanPublicFile,
-  writeTextFile,
-} from '@vnidrop/tauri-plugin-fs/android'
-
-const uri = await createNewPublicFile(
-  AndroidPublicGeneralPurposeDir.Documents,
-  'Reports/report.txt',
-  'text/plain'
-)
-
-await writeTextFile(uri, 'Report body', { create: false })
-await scanPublicFile(uri)
-```
-
-## iOS API
-
-iOS shared filesystem calls work with `IosFsUri` objects returned by the iOS
-file, directory, and save pickers. External document-provider URLs are opened in
-place and persisted with security-scoped bookmarks so they can be resolved again
-after app restart.
-
-```ts
-import {
-  showOpenDirPicker,
-  createNewFile,
-  writeTextFile,
-} from '@vnidrop/tauri-plugin-fs'
-import {
-  listSecurityScopedBookmarks,
-  resolveSecurityScopedBookmark,
-  releaseSecurityScopedBookmark,
-} from '@vnidrop/tauri-plugin-fs/ios'
-
-const dir = await showOpenDirPicker()
-if (dir) {
-  const file = await createNewFile(dir, 'notes.txt', 'text/plain')
-  await writeTextFile(file, 'Hello from iOS')
-}
-
-const bookmarks = await listSecurityScopedBookmarks()
-const first = bookmarks[0]?.bookmarkId
-if (first) {
-  const uri = await resolveSecurityScopedBookmark(first)
-  await releaseSecurityScopedBookmark(uri.bookmarkId!)
-}
-```
-
-The iOS subpath intentionally contains only security-scoped bookmark lifecycle
-helpers and `isIos()`. Android public storage, thumbnails, stream resources, and
-share/view intents remain Android-only APIs.
+The official `fs` and `dialog` plugins are required for desktop delegation.
+Mobile calls are handled by `tauri-plugin-vnidrop-fs`.
 
 ## Permissions
 
-Use the generated Vnidrop permissions in your capability file:
+Add Vnidrop FS permissions to your capability file. A typical development
+configuration is:
+
+```json
+{
+  "permissions": [
+    "vnidrop-fs:all",
+    "fs:read-all",
+    "fs:write-all",
+    {
+      "identifier": "fs:scope",
+      "allow": ["**"]
+    }
+  ]
+}
+```
+
+For production, prefer a tighter scope:
 
 ```json
 {
@@ -178,27 +91,205 @@ Use the generated Vnidrop permissions in your capability file:
 }
 ```
 
-For unrestricted development or internal tools you can use:
+Desktop permissions are enforced by the official Tauri filesystem plugin.
+Android file paths are checked against the Vnidrop scope. Android picker
+`content://` URIs use Android URI permissions. iOS external files use
+security-scoped bookmarks.
 
-```json
-{
-  "permissions": ["vnidrop-fs:all", "fs:default"]
+## Root API
+
+Import portable functions from the package root:
+
+```ts
+import {
+  createNewDir,
+  createNewFile,
+  exists,
+  getMetadata,
+  getPlatformFsCapabilities,
+  readDir,
+  readTextFile,
+  removeDirAll,
+  showOpenDirPicker,
+  showOpenFilePicker,
+  showSaveFilePicker,
+  writeTextFile,
+} from '@vnidrop/tauri-plugin-fs'
+```
+
+The root API routes by platform:
+
+| Platform | Input and output paths |
+| --- | --- |
+| Desktop | `string` or `URL` paths handled by official Tauri plugins |
+| Android | `AndroidFsUri` objects returned by Android pickers/storage APIs |
+| iOS | `IosFsUri` objects returned by iOS pickers/bookmark APIs |
+
+Portable functions include:
+
+- `readFile`, `readTextFile`
+- `writeFile`, `writeTextFile`
+- `readDir`
+- `createDir`, `createNewFile`, `createNewDir`
+- `copyFile`
+- `renameFile`, `renameDir`
+- `removeFile`, `removeEmptyDir`, `removeDirAll`
+- `exists`, `getMetadata`
+- `showOpenFilePicker`, `showOpenDirPicker`, `showSaveFilePicker`
+- `isAndroid`, `isIos`, `isDesktop`, `getPlatformFsCapabilities`
+
+## Common Examples
+
+Pick a text file and read it:
+
+```ts
+import { readTextFile, showOpenFilePicker } from '@vnidrop/tauri-plugin-fs'
+
+const [file] = await showOpenFilePicker({
+  multiple: false,
+  mimeTypes: ['text/plain'],
+})
+
+if (file) {
+  const text = await readTextFile(file)
+  console.log(text)
 }
 ```
 
-The Android implementation enforces Tauri-style scope checks for file-path
-access. Android `content://` URIs obtained from pickers are controlled by
-Android URI permissions. iOS external URLs are controlled by security-scoped
-bookmarks stored by the native plugin.
+Pick a folder, create a unique file, and write text:
 
-## Optional Android Features
+```ts
+import {
+  createNewFile,
+  showOpenDirPicker,
+  writeTextFile,
+} from '@vnidrop/tauri-plugin-fs'
 
-Enable optional Cargo features when your app needs the related Android
-permissions or protocols:
+const dir = await showOpenDirPicker()
+
+if (dir) {
+  const file = await createNewFile(dir, 'notes.txt', 'text/plain')
+  await writeTextFile(file, 'Hello from Vnidrop FS')
+}
+```
+
+List a picked directory:
+
+```ts
+import { readDir, showOpenDirPicker } from '@vnidrop/tauri-plugin-fs'
+
+const dir = await showOpenDirPicker()
+
+if (dir) {
+  const entries = await readDir(dir)
+  for (const entry of entries) {
+    console.log(entry.name, entry.type)
+  }
+}
+```
+
+Show different UI for platform-specific capabilities:
+
+```ts
+import { getPlatformFsCapabilities } from '@vnidrop/tauri-plugin-fs'
+
+const capabilities = getPlatformFsCapabilities()
+
+if (capabilities.supportsPublicStorage) {
+  // Show Android public media/document storage actions.
+}
+
+if (capabilities.supportsSecurityScopedBookmarks) {
+  // Show iOS bookmark management actions.
+}
+```
+
+## Desktop Notes
+
+Desktop file operations delegate to official Tauri plugins. That means desktop
+paths, base directories, and scopes behave like `@tauri-apps/plugin-fs` and
+`@tauri-apps/plugin-dialog`.
+
+For desktop-only code you may still use official Tauri APIs directly. Use
+Vnidrop FS when you want the same UI flow to also run on Android and iOS.
+
+## Android API
+
+Android-only APIs are exported from `@vnidrop/tauri-plugin-fs/android`.
+They are intentionally not exported from the root package.
+
+```ts
+import {
+  AndroidPublicGeneralPurposeDir,
+  createNewPublicFile,
+  scanPublicFile,
+  showOpenDirPicker,
+  writeTextFile,
+} from '@vnidrop/tauri-plugin-fs/android'
+```
+
+Create a public document and ask Android to scan it:
+
+```ts
+import {
+  AndroidPublicGeneralPurposeDir,
+  createNewPublicFile,
+  scanPublicFile,
+  writeTextFile,
+} from '@vnidrop/tauri-plugin-fs/android'
+
+const report = await createNewPublicFile(
+  AndroidPublicGeneralPurposeDir.Documents,
+  'Reports/report.txt',
+  'text/plain'
+)
+
+await writeTextFile(report, 'Quarterly report', { create: false })
+await scanPublicFile(report)
+```
+
+Create a file under a SAF directory:
+
+```ts
+import {
+  createNewFile,
+  showOpenDirPicker,
+  writeTextFile,
+} from '@vnidrop/tauri-plugin-fs/android'
+
+const dir = await showOpenDirPicker()
+
+if (dir) {
+  const file = await createNewFile(dir, 'todo.txt', 'text/plain')
+  await writeTextFile(file, 'Buy milk')
+}
+```
+
+Android-specific features include:
+
+- file, directory, and save pickers
+- persisted picker URI permission management
+- public downloads/documents/images/video/audio helpers
+- MediaStore pending and scan helpers
+- storage-volume queries
+- metadata and MIME helpers
+- thumbnail bytes, data URLs, base64, and protocol URLs
+- read/write stream resources and line streams
+- share and view intents
+- Android API level and public-files permission helpers
+
+If you enable content or thumbnail protocols, allow these origins in your CSP:
+
+```text
+http://vnidrop-fs-content.localhost
+http://vnidrop-fs-thumbnail.localhost
+```
+
+Enable optional Android-related Cargo features only when you need them:
 
 ```toml
 tauri-plugin-vnidrop-fs = {
-  path = "../path/to/plugin-fs",
+  version = "0.1",
   features = [
     "protocol_content",
     "protocol_thumbnail",
@@ -208,46 +299,121 @@ tauri-plugin-vnidrop-fs = {
 }
 ```
 
-Protocol helpers:
+## iOS API
+
+iOS-only helpers are exported from `@vnidrop/tauri-plugin-fs/ios`.
+The shared root API handles normal iOS file and directory operations.
+The iOS subpath is for security-scoped bookmark lifecycle management.
 
 ```ts
-import { convertFileSrc, convertThumbnailSrc } from '@vnidrop/tauri-plugin-fs/android'
-
-const contentSrc = convertFileSrc(uri)
-const thumbnailSrc = convertThumbnailSrc(uri, {
-  width: 256,
-  height: 256,
-  format: 'jpeg',
-})
+import {
+  listSecurityScopedBookmarks,
+  releaseSecurityScopedBookmark,
+  resolveSecurityScopedBookmark,
+} from '@vnidrop/tauri-plugin-fs/ios'
 ```
 
-If you use a Content Security Policy, allow:
+Restore a bookmarked folder after app restart:
 
-- `http://vnidrop-fs-content.localhost`
-- `http://vnidrop-fs-thumbnail.localhost`
+```ts
+import { readDir } from '@vnidrop/tauri-plugin-fs'
+import {
+  listSecurityScopedBookmarks,
+  resolveSecurityScopedBookmark,
+} from '@vnidrop/tauri-plugin-fs/ios'
 
-## iOS Status
+const bookmarks = await listSecurityScopedBookmarks()
+const bookmarkId = bookmarks[0]?.bookmarkId
 
-iOS supports the shared root API for picked files and directories:
-read/write, directory listing, create, unique create, copy, rename, remove,
-metadata, existence checks, and file/directory/save pickers. iOS does not
-implement Android-specific public storage, thumbnail, stream, or share/view
-APIs.
+if (bookmarkId) {
+  const dir = await resolveSecurityScopedBookmark(bookmarkId)
+  const entries = await readDir(dir)
+  console.log(entries)
+}
+```
+
+iOS picker results are opened in place. External document-provider files are
+persisted as security-scoped bookmarks when possible. App-local `file://` URLs
+may have `bookmarkId: null`.
+
+iOS supports the shared root API for:
+
+- file, directory, and save pickers
+- read/write bytes and text
+- directory listing
+- create and unique create
+- copy, rename, remove
+- metadata and existence checks
+- security-scoped bookmark list/resolve/release/persist helpers
+
+Android public storage, thumbnails, streams, and share/view intents are not iOS
+features and remain Android-only.
 
 ## Testing
 
-Run the fast host suite with:
+Run the host suite:
 
 ```sh
 npm run check
 ```
 
-See `TESTING.md` for the full JS, Rust, Swift, Android JVM, emulator, and CI
-strategy.
+Run iOS Swift tests:
 
-## Attribution
+```sh
+npm run test:ios
+```
 
-The Android implementation is adapted from
-[`tauri-plugin-android-fs`](https://github.com/aiueo13/tauri-plugin-android-fs),
-licensed under MIT OR Apache-2.0. The copied license texts are included in
-`LICENSE-MIT.txt` and `LICENSE-APACHE.txt`.
+Run Android JVM tests when the Android Gradle wrapper is available:
+
+```sh
+npm run test:android:jvm
+```
+
+Run the example app:
+
+```sh
+cd examples/tauri-app
+npm install
+npm run tauri dev
+```
+
+iOS simulator:
+
+```sh
+cd examples/tauri-app
+npm run tauri -- ios dev "iPhone 17"
+```
+
+Android device or emulator:
+
+```sh
+cd examples/tauri-app
+npm run tauri android dev
+```
+
+See `TESTING.md` for the full test strategy.
+
+## CI And Release
+
+CI runs on pushes and pull requests targeting `main`, `master`, `develop`, and
+`fix*` branches. Emulator smoke tests are manual so normal PR checks remain
+fast.
+
+Releases are handled by `.github/workflows/release.yml`. Pushing a SemVer tag
+such as `v0.1.0` runs verification, npm dry-run, crates.io dry-run, then
+publishes to npm and crates.io when the required secrets are configured:
+
+- `NPM_TOKEN`
+- `CARGO_REGISTRY_TOKEN`
+
+Manual release runs are also supported from GitHub Actions.
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0
+- MIT license
+
+Android code was adapted from MIT-licensed `tauri-plugin-android-fs` behavior
+and renamed for the Vnidrop FS namespace.

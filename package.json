@@ -1,6 +1,6 @@
 {
   "name": "@vnidrop/tauri-plugin-fs",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "AbassHammed",
   "description": "Cross-platform filesystem manager for Tauri with Android SAF and iOS document picker support.",
   "keywords": [
@@ -48,6 +48,8 @@
     "test:android:connected": "cd android && ./gradlew connectedDebugAndroidTest",
     "test:ios": "cd ios && swift test",
     "test:types": "tsc -p tsconfig.test.json --noEmit",
+    "example:build": "cd examples/tauri-app && npm run build",
+    "example:check": "npm run example:build && cd examples/tauri-app/src-tauri && cargo check",
     "check": "npm run build && npm run test && npm run test:types && cargo check --all-features && cargo test"
   },
   "dependencies": {

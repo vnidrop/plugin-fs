@@ -2,13 +2,13 @@
 name = "tauri-plugin-vnidrop-fs"
 version = "0.1.0"
 authors = [ "AbassHammed" ]
-description = "Cross-platform filesystem manager for Tauri with Android SAF support."
+description = "Cross-platform filesystem manager for Tauri with Android SAF and iOS document picker support."
 edition = "2021"
 rust-version = "1.77.2"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
 links = "tauri-plugin-vnidrop-fs"
 license = "MIT OR Apache-2.0"
-keywords = ["tauri", "fs", "filesystem", "android", "mobile"]
+keywords = ["tauri", "fs", "filesystem", "android", "ios"]
 
 [features]
 default = ["commands"]
