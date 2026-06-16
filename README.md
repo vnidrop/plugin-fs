@@ -96,6 +96,30 @@ Android file paths are checked against the Vnidrop scope. Android picker
 `content://` URIs use Android URI permissions. iOS external files use
 security-scoped bookmarks.
 
+## Security Model
+
+Treat filesystem access as an explicit capability:
+
+- Prefer picker-returned mobile URI objects over raw paths.
+- Keep production capability files narrow. Do not ship `vnidrop-fs:all`,
+  `fs:read-all`, `fs:write-all`, or `"allow": ["**"]` unless the whole app is
+  intended to manage every reachable file.
+- Android `content://` operations are authorized by Android URI permissions and
+  document providers. Destructive operations such as rename and delete should
+  only be exposed in your UI for URIs the user selected or the app created.
+- Android relative paths are validated before native create/find operations:
+  absolute paths, `.`/`..`, backslashes, and control characters are rejected.
+- iOS raw string paths are limited to the app container. External iOS files and
+  folders must use picker/bookmark-backed `IosFsUri` objects.
+- iOS bookmark data is stored in app `UserDefaults`. Bookmark IDs are random,
+  but IDs and bookmark data are app-local access state, not secret material.
+
+If you enable the Android content or thumbnail protocols, protocol URLs should
+be treated like bearer references inside your webview. Only generate them for
+files your UI is allowed to show, and keep the protocol scopes as narrow as
+possible. Invalid protocol scope configuration fails plugin startup so release
+builds do not silently run with an unexpected protocol policy.
+
 ## Root API
 
 Import portable functions from the package root:
@@ -334,7 +358,8 @@ if (bookmarkId) {
 
 iOS picker results are opened in place. External document-provider files are
 persisted as security-scoped bookmarks when possible. App-local `file://` URLs
-may have `bookmarkId: null`.
+may have `bookmarkId: null`; external URLs without a bookmark are rejected by
+native operations.
 
 iOS supports the shared root API for:
 
