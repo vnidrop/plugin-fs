@@ -1,6 +1,6 @@
 {
   "name": "@vnidrop/tauri-plugin-fs",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc",
   "author": "AbassHammed",
   "description": "Cross-platform filesystem manager for Tauri with Android SAF and iOS document picker support.",
   "keywords": [
