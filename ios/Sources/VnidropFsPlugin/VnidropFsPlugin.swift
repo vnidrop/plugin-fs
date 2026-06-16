@@ -85,10 +85,10 @@ private final class BookmarkIdArgs: Decodable {
 }
 
 private final class DocumentPickerDelegate: NSObject, UIDocumentPickerDelegate {
-  private let onResolve: (Any?) -> Void
+  private let onResolve: ([URL]?) -> Void
   private let onReject: (String) -> Void
 
-  init(onResolve: @escaping (Any?) -> Void, onReject: @escaping (String) -> Void) {
+  init(onResolve: @escaping ([URL]?) -> Void, onReject: @escaping (String) -> Void) {
     self.onResolve = onResolve
     self.onReject = onReject
   }
@@ -107,9 +107,9 @@ final class VnidropFsPlugin: Plugin {
   private var retainedDelegates: [DocumentPickerDelegate] = []
 
   @objc public func listSecurityScopedBookmarks(_ invoke: Invoke) throws {
-    let values = store.bookmarkIds().compactMap { id -> [String: Any]? in
+    let values = store.bookmarkIds().compactMap { id -> IosFsUri? in
       guard let resolved = try? resolveBookmark(id: id) else { return nil }
-      return encodeUri(resolved.uri)
+      return resolved.uri
     }
     invoke.resolve(values)
   }
@@ -117,7 +117,7 @@ final class VnidropFsPlugin: Plugin {
   @objc public func resolveSecurityScopedBookmark(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(BookmarkIdArgs.self)
     let resolved = try resolveBookmark(id: args.bookmarkId)
-    invoke.resolve(encodeUri(resolved.uri))
+    invoke.resolve(resolved.uri)
   }
 
   @objc public func releaseSecurityScopedBookmark(_ invoke: Invoke) throws {
@@ -128,7 +128,7 @@ final class VnidropFsPlugin: Plugin {
   @objc public func persistSecurityScopedBookmark(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(UriArg.self)
     let resolved = try resolve(args.uri)
-    invoke.resolve(encodeUri(persist(url: resolved.url)))
+    invoke.resolve(persist(url: resolved.url))
   }
 
   @objc public func readFile(_ invoke: Invoke) throws {
@@ -153,7 +153,7 @@ final class VnidropFsPlugin: Plugin {
 
   @objc public func writeFile(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(WriteFileArgs.self)
-    run(invoke) {
+    runVoid(invoke) {
       let resolved = try self.resolve(args.uri)
       try self.withAccess(resolved.url) {
         if !args.create && !FileManager.default.fileExists(atPath: resolved.url.path) {
@@ -161,13 +161,12 @@ final class VnidropFsPlugin: Plugin {
         }
         try Data(args.data).write(to: resolved.url, options: .atomic)
       }
-      return nil
     }
   }
 
   @objc public func writeTextFile(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(WriteTextFileArgs.self)
-    run(invoke) {
+    runVoid(invoke) {
       let resolved = try self.resolve(args.uri)
       try self.withAccess(resolved.url) {
         if !args.create && !FileManager.default.fileExists(atPath: resolved.url.path) {
@@ -175,7 +174,6 @@ final class VnidropFsPlugin: Plugin {
         }
         try args.data.write(to: resolved.url, atomically: true, encoding: self.stringEncoding(args.encoding))
       }
-      return nil
     }
   }
 
@@ -188,7 +186,7 @@ final class VnidropFsPlugin: Plugin {
         let urls = try FileManager.default.contentsOfDirectory(at: resolved.url, includingPropertiesForKeys: keys)
         let offset = max(args.offset ?? 0, 0)
         let end = args.limit.map { min(offset + max($0, 0), urls.count) } ?? urls.count
-        guard offset <= end else { return [] }
+        guard offset <= end else { return [IosFsEntry]() }
         return try urls[offset..<end].map { url in
           try self.encodeEntry(url: url)
         }
@@ -203,7 +201,7 @@ final class VnidropFsPlugin: Plugin {
       try self.withAccess(try self.resolve(.uri(args.baseDirUri)).url) {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
       }
-      return self.encodeUri(self.persist(url: url))
+      return self.persist(url: url)
     }
   }
 
@@ -215,7 +213,7 @@ final class VnidropFsPlugin: Plugin {
       try self.withAccess(try self.resolve(.uri(args.baseDirUri)).url) {
         _ = FileManager.default.createFile(atPath: url.path, contents: Data())
       }
-      return self.encodeUri(self.persist(url: url))
+      return self.persist(url: url)
     }
   }
 
@@ -227,13 +225,13 @@ final class VnidropFsPlugin: Plugin {
       try self.withAccess(try self.resolve(.uri(args.baseDirUri)).url) {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
       }
-      return self.encodeUri(self.persist(url: url))
+      return self.persist(url: url)
     }
   }
 
   @objc public func copyFile(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(CopyFileArgs.self)
-    run(invoke) {
+    runVoid(invoke) {
       let src = try self.resolve(args.srcPath)
       let dest = try self.resolve(args.destPath)
       try self.withAccess(src.url) {
@@ -244,7 +242,6 @@ final class VnidropFsPlugin: Plugin {
           try FileManager.default.copyItem(at: src.url, to: dest.url)
         }
       }
-      return nil
     }
   }
 
@@ -258,18 +255,17 @@ final class VnidropFsPlugin: Plugin {
 
   @objc public func removeFile(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(UriArg.self)
-    run(invoke) {
+    runVoid(invoke) {
       let resolved = try self.resolve(args.uri)
       try self.withAccess(resolved.url) {
         try FileManager.default.removeItem(at: resolved.url)
       }
-      return nil
     }
   }
 
   @objc public func removeEmptyDir(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(UriArg.self)
-    run(invoke) {
+    runVoid(invoke) {
       let resolved = try self.resolve(args.uri)
       try self.withAccess(resolved.url) {
         if try !FileManager.default.contentsOfDirectory(atPath: resolved.url.path).isEmpty {
@@ -277,7 +273,6 @@ final class VnidropFsPlugin: Plugin {
         }
         try FileManager.default.removeItem(at: resolved.url)
       }
-      return nil
     }
   }
 
@@ -303,14 +298,14 @@ final class VnidropFsPlugin: Plugin {
 
   @objc public func showOpenFilePicker(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(OpenFilePickerArgs.self)
-    presentPicker(invoke: invoke, mode: .open, documentTypes: documentTypes(for: args.mimeTypes), allowsMultipleSelection: args.multiple) { urls in
-      urls.map { self.encodeUri(self.persist(url: $0)) }
+    presentPicker(invoke: invoke, mode: .open, documentTypes: documentTypes(for: args.mimeTypes), allowsMultipleSelection: args.multiple, cancelValue: [IosFsUri]()) { urls in
+      urls.map { self.persist(url: $0) }
     }
   }
 
   @objc public func showOpenDirPicker(_ invoke: Invoke) throws {
-    presentPicker(invoke: invoke, mode: .open, documentTypes: ["public.folder"], allowsMultipleSelection: false) { urls in
-      urls.first.map { self.encodeUri(self.persist(url: $0)) } as Any
+    presentPicker(invoke: invoke, mode: .open, documentTypes: ["public.folder"], allowsMultipleSelection: false, cancelValue: Optional<IosFsUri>.none) { urls in
+      urls.first.map { self.persist(url: $0) }
     }
   }
 
@@ -318,8 +313,8 @@ final class VnidropFsPlugin: Plugin {
     let args = try invoke.parseArgs(SaveFilePickerArgs.self)
     let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(args.defaultFileName)
     _ = FileManager.default.createFile(atPath: tmp.path, contents: Data())
-    presentExportPicker(invoke: invoke, url: tmp) { urls in
-      urls.first.map { self.encodeUri(self.persist(url: $0)) } as Any
+    presentExportPicker(invoke: invoke, url: tmp, cancelValue: Optional<IosFsUri>.none) { urls in
+      urls.first.map { self.persist(url: $0) }
     }
   }
 
@@ -331,14 +326,25 @@ final class VnidropFsPlugin: Plugin {
       try self.withAccess(resolved.url) {
         try FileManager.default.moveItem(at: resolved.url, to: dest)
       }
-      return self.encodeUri(self.persist(url: dest))
+      return self.persist(url: dest)
     }
   }
 
-  private func run(_ invoke: Invoke, _ body: @escaping () throws -> Any?) {
+  private func run<T: Encodable>(_ invoke: Invoke, _ body: @escaping () throws -> T) {
     DispatchQueue.global(qos: .userInitiated).async {
       do {
         invoke.resolve(try body())
+      } catch {
+        invoke.reject(error.localizedDescription)
+      }
+    }
+  }
+
+  private func runVoid(_ invoke: Invoke, _ body: @escaping () throws -> Void) {
+    DispatchQueue.global(qos: .userInitiated).async {
+      do {
+        try body()
+        invoke.resolve()
       } catch {
         invoke.reject(error.localizedDescription)
       }
@@ -398,40 +404,25 @@ final class VnidropFsPlugin: Plugin {
     return try childURL(baseURL: resolved.url, relativePath: relativePath)
   }
 
-  private func encodeUri(_ uri: IosFsUri) -> [String: Any] {
-    var value: [String: Any] = [
-      "uri": uri.uri,
-      "bookmarkId": uri.bookmarkId ?? NSNull()
-    ]
-    if let isDirectory = uri.isDirectory {
-      value["isDirectory"] = isDirectory
-    }
-    return value
-  }
-
-  private func encodeEntry(url: URL) throws -> [String: Any?] {
+  private func encodeEntry(url: URL) throws -> IosFsEntry {
     var metadata = try encodeMetadata(url: url)
-    metadata["uri"] = encodeUri(persist(url: url))
+    metadata.uri = persist(url: url)
     return metadata
   }
 
-  private func encodeMetadata(url: URL) throws -> [String: Any?] {
+  private func encodeMetadata(url: URL) throws -> IosFsEntry {
     let values = try url.resourceValues(forKeys: [.isDirectoryKey, .contentModificationDateKey, .fileSizeKey, .typeIdentifierKey])
     let lastModified = (values.contentModificationDate ?? Date()).timeIntervalSince1970 * 1000
     if values.isDirectory == true {
-      return [
-        "type": "Dir",
-        "name": url.lastPathComponent,
-        "lastModified": lastModified
-      ]
+      return IosFsEntry(type: "Dir", name: url.lastPathComponent, lastModified: lastModified)
     }
-    return [
-      "type": "File",
-      "name": url.lastPathComponent,
-      "lastModified": lastModified,
-      "byteLength": UInt64(values.fileSize ?? 0),
-      "mimeType": VnidropFsCore.mimeType(for: url)
-    ]
+    return IosFsEntry(
+      type: "File",
+      name: url.lastPathComponent,
+      lastModified: lastModified,
+      byteLength: UInt64(values.fileSize ?? 0),
+      mimeType: VnidropFsCore.mimeType(for: url)
+    )
   }
 
   private func stringEncoding(_ label: String?) -> String.Encoding {
@@ -442,13 +433,14 @@ final class VnidropFsPlugin: Plugin {
     }
   }
 
-  private func presentPicker(
+  private func presentPicker<T>(
     invoke: Invoke,
     mode: UIDocumentPickerMode,
     documentTypes: [String],
     allowsMultipleSelection: Bool,
-    mapper: @escaping ([URL]) -> Any
-  ) {
+    cancelValue: T,
+    mapper: @escaping ([URL]) -> T
+  ) where T: Encodable {
     DispatchQueue.main.async {
       guard let presenter = topViewController() else {
         invoke.reject("unable to present document picker")
@@ -458,10 +450,10 @@ final class VnidropFsPlugin: Plugin {
       picker.allowsMultipleSelection = allowsMultipleSelection
       var delegate: DocumentPickerDelegate!
       delegate = DocumentPickerDelegate(
-        onResolve: { result in
+        onResolve: { urls in
           self.retainedDelegates.removeAll { $0 === delegate }
-          guard let urls = result as? [URL] else {
-            invoke.resolve(allowsMultipleSelection ? [] : nil)
+          guard let urls = urls else {
+            invoke.resolve(cancelValue)
             return
           }
           invoke.resolve(mapper(urls))
@@ -474,11 +466,12 @@ final class VnidropFsPlugin: Plugin {
     }
   }
 
-  private func presentExportPicker(
+  private func presentExportPicker<T>(
     invoke: Invoke,
     url: URL,
-    mapper: @escaping ([URL]) -> Any
-  ) {
+    cancelValue: T,
+    mapper: @escaping ([URL]) -> T
+  ) where T: Encodable {
     DispatchQueue.main.async {
       guard let presenter = topViewController() else {
         invoke.reject("unable to present document picker")
@@ -487,10 +480,10 @@ final class VnidropFsPlugin: Plugin {
       let picker = UIDocumentPickerViewController(url: url, in: .exportToService)
       var delegate: DocumentPickerDelegate!
       delegate = DocumentPickerDelegate(
-        onResolve: { result in
+        onResolve: { urls in
           self.retainedDelegates.removeAll { $0 === delegate }
-          guard let urls = result as? [URL] else {
-            invoke.resolve(nil)
+          guard let urls = urls else {
+            invoke.resolve(cancelValue)
             return
           }
           invoke.resolve(mapper(urls))
@@ -501,6 +494,24 @@ final class VnidropFsPlugin: Plugin {
       self.retainedDelegates.append(delegate)
       presenter.present(picker, animated: true)
     }
+  }
+}
+
+private struct IosFsEntry: Encodable {
+  let type: String
+  let name: String
+  let lastModified: Double
+  var uri: IosFsUri?
+  var byteLength: UInt64?
+  var mimeType: String?
+
+  init(type: String, name: String, lastModified: Double, uri: IosFsUri? = nil, byteLength: UInt64? = nil, mimeType: String? = nil) {
+    self.type = type
+    self.name = name
+    self.lastModified = lastModified
+    self.uri = uri
+    self.byteLength = byteLength
+    self.mimeType = mimeType
   }
 }
 

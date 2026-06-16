@@ -20,6 +20,7 @@ tauri::ios_plugin_binding!(init_plugin_vnidrop_fs);
 
 #[cfg(target_os = "ios")]
 pub(crate) struct IosFs<R: tauri::Runtime> {
+    #[allow(dead_code)]
     handle: tauri::plugin::PluginHandle<R>,
 }
 
