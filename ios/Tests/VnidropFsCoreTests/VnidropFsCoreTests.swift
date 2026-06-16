@@ -2,12 +2,6 @@ import XCTest
 @testable import VnidropFsCore
 
 final class VnidropFsCoreTests: XCTestCase {
-  func testStableBookmarkIdIsDeterministic() {
-    let url = URL(fileURLWithPath: "/tmp/Vnidrop Test/report.txt")
-
-    XCTAssertEqual(stableBookmarkId(for: url), stableBookmarkId(for: url))
-  }
-
   func testUniqueCandidateAddsSuffixBeforeExtension() {
     let base = URL(fileURLWithPath: "/tmp/report.txt")
     let taken = Set([
@@ -23,6 +17,17 @@ final class VnidropFsCoreTests: XCTestCase {
   func testChildURLRejectsUnsafeRelativePath() {
     XCTAssertThrowsError(try childURL(baseURL: URL(fileURLWithPath: "/tmp"), relativePath: "../secret.txt"))
     XCTAssertThrowsError(try childURL(baseURL: URL(fileURLWithPath: "/tmp"), relativePath: "/secret.txt"))
+    XCTAssertThrowsError(try childURL(baseURL: URL(fileURLWithPath: "/tmp"), relativePath: "safe/../secret.txt"))
+    XCTAssertThrowsError(try childURL(baseURL: URL(fileURLWithPath: "/tmp"), relativePath: "safe\\secret.txt"))
+  }
+
+  func testValidateFileNameRejectsPathComponents() {
+    XCTAssertEqual(try validateFileName("report.txt"), "report.txt")
+    XCTAssertThrowsError(try validateFileName(""))
+    XCTAssertThrowsError(try validateFileName("."))
+    XCTAssertThrowsError(try validateFileName(".."))
+    XCTAssertThrowsError(try validateFileName("../report.txt"))
+    XCTAssertThrowsError(try validateFileName("nested/report.txt"))
   }
 
   func testBookmarkStorePersistsBase64Data() {
@@ -38,6 +43,19 @@ final class VnidropFsCoreTests: XCTestCase {
     XCTAssertEqual(store.data(for: uri.bookmarkId!), Data([1, 2, 3]))
     XCTAssertTrue(store.remove(id: uri.bookmarkId!))
     XCTAssertEqual(store.bookmarkIds(), [])
+  }
+
+  func testBookmarkStoreUsesRandomIdsByDefault() {
+    let suite = "plugin.vnidrop.fs.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let store = SecurityScopedBookmarkStore(defaults: defaults)
+    let url = URL(fileURLWithPath: "/tmp/report.txt")
+
+    let first = store.save(url: url, bookmarkData: Data([1]))
+    let second = store.save(url: url, bookmarkData: Data([2]))
+
+    XCTAssertNotEqual(first.bookmarkId, second.bookmarkId)
   }
 
   func testMimeTypeMappingFallsBackToOctetStream() {

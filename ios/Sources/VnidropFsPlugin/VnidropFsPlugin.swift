@@ -311,7 +311,7 @@ final class VnidropFsPlugin: Plugin {
 
   @objc public func showSaveFilePicker(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(SaveFilePickerArgs.self)
-    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(args.defaultFileName)
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(try validateFileName(args.defaultFileName))
     _ = FileManager.default.createFile(atPath: tmp.path, contents: Data())
     presentExportPicker(invoke: invoke, url: tmp, cancelValue: Optional<IosFsUri>.none) { urls in
       urls.first.map { self.persist(url: $0) }
@@ -322,7 +322,7 @@ final class VnidropFsPlugin: Plugin {
     let args = try invoke.parseArgs(RenameArgs.self)
     run(invoke) {
       let resolved = try self.resolve(.uri(args.uri))
-      let dest = resolved.url.deletingLastPathComponent().appendingPathComponent(args.newName)
+      let dest = resolved.url.deletingLastPathComponent().appendingPathComponent(try validateFileName(args.newName))
       try self.withAccess(resolved.url) {
         try FileManager.default.moveItem(at: resolved.url, to: dest)
       }
@@ -355,18 +355,24 @@ final class VnidropFsPlugin: Plugin {
     switch input {
     case .string(let value):
       let url = URL(string: value) ?? URL(fileURLWithPath: value)
+      guard isAppLocalFileURL(url) else {
+        throw FsError("raw iOS file paths are limited to the app container; use a picker IosFsUri or security-scoped bookmark for external files")
+      }
       return (url, nil)
     case .uri(let uri):
       if let id = uri.bookmarkId, let data = store.data(for: id) {
         var stale = false
         let url = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
         if stale {
-          _ = persist(url: url)
+          _ = persist(url: url, bookmarkId: id)
         }
         return (url, uri)
       }
       guard let url = URL(string: uri.uri) else {
         throw FsError("invalid URL")
+      }
+      guard isAppLocalFileURL(url) else {
+        throw FsError("external iOS URLs require a security-scoped bookmark")
       }
       return (url, uri)
     }
@@ -378,15 +384,18 @@ final class VnidropFsPlugin: Plugin {
     }
     var stale = false
     let url = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
-    let uri = stale ? persist(url: url) : IosFsUri(uri: url.absoluteString, bookmarkId: id, isDirectory: url.hasDirectoryPath)
+    let uri = stale ? persist(url: url, bookmarkId: id) : IosFsUri(uri: url.absoluteString, bookmarkId: id, isDirectory: url.hasDirectoryPath)
     return (url, uri)
   }
 
-  private func persist(url: URL) -> IosFsUri {
+  private func persist(url: URL, bookmarkId: String? = nil) -> IosFsUri {
     do {
       let accessed = url.startAccessingSecurityScopedResource()
       defer { if accessed { url.stopAccessingSecurityScopedResource() } }
       let data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+      if let bookmarkId {
+        return store.save(url: url, bookmarkData: data, id: bookmarkId)
+      }
       return store.save(url: url, bookmarkData: data)
     } catch {
       return IosFsUri(uri: url.absoluteString, bookmarkId: nil, isDirectory: url.hasDirectoryPath)
@@ -397,6 +406,19 @@ final class VnidropFsPlugin: Plugin {
     let accessed = url.startAccessingSecurityScopedResource()
     defer { if accessed { url.stopAccessingSecurityScopedResource() } }
     return try body()
+  }
+
+  private func isAppLocalFileURL(_ url: URL) -> Bool {
+    guard url.isFileURL else { return false }
+    let candidate = url.standardizedFileURL.path
+    let roots = [
+      NSHomeDirectory(),
+      FileManager.default.temporaryDirectory.path
+    ].map { URL(fileURLWithPath: $0).standardizedFileURL.path }
+
+    return roots.contains { root in
+      candidate == root || candidate.hasPrefix(root.hasSuffix("/") ? root : "\(root)/")
+    }
   }
 
   private func childUrl(base: IosFsUri, relativePath: String) throws -> URL {

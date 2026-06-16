@@ -95,7 +95,7 @@ class RawFileController: FileController {
     @Synchronized
     override fun createNewFile(dirUri: AFUri, relativePath: String, mimeType: String): JSObject {
         val dir = File(Uri.parse(dirUri.uri).path!!)
-        val baseFile = File(dir.path + "/" + relativePath.trimStart('/'))
+        val baseFile = AFUtils.resolveChildFile(dir, relativePath)
         val fileName = baseFile.nameWithoutExtension
         val fileExtension = baseFile.extension
     
@@ -130,7 +130,7 @@ class RawFileController: FileController {
     ): JSObject {
 
         val dir = File(Uri.parse(dirUri.uri).path!!)
-        val baseFile = File(dir.path + "/" + relativePath.trimStart('/'))
+        val baseFile = AFUtils.resolveChildFile(dir, relativePath)
         val fileName = baseFile.nameWithoutExtension
         val fileExtension = baseFile.extension
 
@@ -165,7 +165,7 @@ class RawFileController: FileController {
     @Synchronized
     override fun createNewDir(dirUri: AFUri, relativePath: String): JSObject {
         val parentDir = File(Uri.parse(dirUri.uri).path!!)
-        val baseDir = File(parentDir.path + "/" + relativePath.trimStart('/'))
+        val baseDir = AFUtils.resolveChildFile(parentDir, relativePath)
         val dirName = baseDir.name
 
         var dir = baseDir
@@ -193,7 +193,7 @@ class RawFileController: FileController {
     ): JSObject {
 
         val dir = File(Uri.parse(dirUri.uri).path!!)
-        val baseFile = File(dir.path + "/" + relativePath.trimStart('/'))
+        val baseFile = AFUtils.resolveChildFile(dir, relativePath)
         val fileName = baseFile.name
 
         var file = baseFile
@@ -221,8 +221,8 @@ class RawFileController: FileController {
 
     @Synchronized
     override fun createDirAll(dirUri: AFUri, relativePath: String): JSObject {
-        val parentPath = Uri.parse(dirUri.uri).path!!.trimEnd('/')
-        val dir = File(parentPath + "/" + relativePath.trimStart('/'))
+        val parent = File(Uri.parse(dirUri.uri).path!!)
+        val dir = AFUtils.resolveChildFile(parent, relativePath)
         dir.mkdirs()
 
         val res = JSObject()
@@ -233,8 +233,8 @@ class RawFileController: FileController {
 
     @Synchronized
     override fun createDirAllAndReturnRelativePath(dirUri: AFUri, relativePath: String): JSObject {
-        val parentPath = Uri.parse(dirUri.uri).path!!.trimEnd('/')
-        val dir = File(parentPath + "/" + relativePath.trimStart('/'))
+        val parent = File(Uri.parse(dirUri.uri).path!!)
+        val dir = AFUtils.resolveChildFile(parent, relativePath)
         dir.mkdirs()
 
         return JSObject().apply {
@@ -279,7 +279,7 @@ class RawFileController: FileController {
 
     override fun rename(uri: AFUri, newName: String): JSObject {
         val file = File(Uri.parse(uri.uri).path!!)
-        val newFile = File(file.parentFile, newName)
+        val newFile = File(file.parentFile, AFUtils.validateFileName(newName))
 
         if (newFile.exists()) {
             throw Exception("File already exists: ${newFile.path}")

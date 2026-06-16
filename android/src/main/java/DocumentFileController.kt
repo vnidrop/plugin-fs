@@ -214,11 +214,8 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (relativePath.endsWith('/')) {
             throw Exception("Illegal file path format, ends with '/'. $relativePath")
         }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
 
-        val _relativePath = relativePath.trimStart('/')
+        val _relativePath = AFUtils.validateRelativePath(relativePath)
         val relativeDirPath = _relativePath.substringBeforeLast("/", "")
         val fileName = _relativePath.substringAfterLast("/", _relativePath)
 
@@ -242,11 +239,8 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (relativePath.endsWith('/')) {
             throw Exception("Illegal file path format, ends with '/'. $relativePath")
         }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
 
-        val _relativePath = relativePath.trimStart('/')
+        val _relativePath = AFUtils.validateRelativePath(relativePath)
         val relativeDirPath = _relativePath.substringBeforeLast("/", "")
         val fileName = _relativePath.substringAfterLast("/", _relativePath)
 
@@ -277,11 +271,8 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (relativePath.endsWith('/')) {
             throw Exception("Illegal file path format, ends with '/'. $relativePath")
         }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
 
-        val _relativePath = relativePath.trimStart('/')
+        val _relativePath = AFUtils.validateRelativePath(relativePath)
         val relativeDirPath = _relativePath.substringBeforeLast("/", "")
         val fileName = _relativePath.substringAfterLast("/", _relativePath)
 
@@ -305,11 +296,8 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (relativePath.endsWith('/')) {
             throw Exception("Illegal file path format, ends with '/'. $relativePath")
         }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
 
-        val _relativePath = relativePath.trimStart('/')
+        val _relativePath = AFUtils.validateRelativePath(relativePath)
         val relativeDirPath = _relativePath.substringBeforeLast("/", "")
         val fileName = _relativePath.substringAfterLast("/", _relativePath)
 
@@ -340,11 +328,8 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (relativePath.endsWith('/')) {
             throw Exception("Illegal file path format, ends with '/'. $relativePath")
         }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
 
-        val uri = createOrGetDir(dirUri, relativePath)
+        val uri = createOrGetDir(dirUri, AFUtils.validateRelativePath(relativePath))
 
         val res = JSObject()
         res.put("uri", uri)
@@ -357,11 +342,8 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (relativePath.endsWith('/')) {
             throw Exception("Illegal file path format, ends with '/'. $relativePath")
         }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
 
-        val entry = createOrGetDirAndReturnRelativePath(dirUri, relativePath)
+        val entry = createOrGetDirAndReturnRelativePath(dirUri, AFUtils.validateRelativePath(relativePath))
         val uri = entry.first
         val actualRelativePath = entry.second
 
@@ -425,7 +407,7 @@ class DocumentFileController(private val activity: Activity): FileController {
         val updatedUri = DocumentsContract.renameDocument(
             activity.contentResolver, 
             documentUri, 
-            newName
+            AFUtils.validateFileName(newName)
         )
 
         val res = JSObject()
@@ -598,14 +580,9 @@ class DocumentFileController(private val activity: Activity): FileController {
     }
 
     fun findFileUri(dirUri: AFUri, relativePath: String): JSObject {
-        if (relativePath.startsWith('/')) {
-            throw Exception("Illegal file path format, starts with '/'.")
-        }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
+        val safeRelativePath = AFUtils.validateRelativePath(relativePath)
 
-        val uri = findUri(dirUri, relativePath)
+        val uri = findUri(dirUri, safeRelativePath)
         if (isDir(uri)) {
             throw Exception("This is a directory: $uri")
         }
@@ -617,14 +594,9 @@ class DocumentFileController(private val activity: Activity): FileController {
     }
 
     fun findDirUri(dirUri: AFUri, relativePath: String): JSObject {
-        if (relativePath.startsWith('/')) {
-            throw Exception("Illegal file path format, starts with '/'.")
-        }
-        if (relativePath.isEmpty()) {
-            throw Exception("Relative path is empty.")
-        }
+        val safeRelativePath = AFUtils.validateRelativePath(relativePath)
 
-        val uri = findUri(dirUri, relativePath)
+        val uri = findUri(dirUri, safeRelativePath)
         if (!isDir(uri)) {
             throw Exception("This is a file: $uri")
         }
