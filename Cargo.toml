@@ -1,17 +1,50 @@
 [package]
 name = "tauri-plugin-vnidrop-fs"
 version = "0.1.0"
-authors = [ "You" ]
-description = ""
+authors = [ "AbassHammed" ]
+description = "Cross-platform filesystem manager for Tauri with Android SAF and iOS document picker support."
 edition = "2021"
 rust-version = "1.77.2"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
 links = "tauri-plugin-vnidrop-fs"
+license = "MIT OR Apache-2.0"
+keywords = ["tauri", "fs", "filesystem", "android", "ios"]
+
+[features]
+default = ["commands"]
+commands = []
+protocol_content = ["dep:getrandom", "dep:http-range"]
+protocol_thumbnail = []
+notification_permission = []
+legacy_storage_permission = []
+legacy_storage_permission_include_android_10 = []
+protocol-content = ["protocol_content"]
+protocol-thumbnail = ["protocol_thumbnail"]
+notification-permission = ["notification_permission"]
+legacy-storage-permission = ["legacy_storage_permission"]
+legacy-storage-permission-include-android-10 = ["legacy_storage_permission_include_android_10"]
 
 [dependencies]
-tauri = { version = "2.8.5" }
-serde = "1.0"
+tauri = { version = "2.8.5", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 thiserror = "2"
+tauri-plugin-fs = "2"
+sync_async = "0.1.0"
+schemars = "0.8"
+glob = "0.3"
+percent-encoding = "2"
+getrandom = { version = "0.4", optional = true }
+http-range = { version = "0.1.5", optional = true }
+
+[target.'cfg(target_os = "android")'.dependencies]
+base64 = "0.22.1"
 
 [build-dependencies]
 tauri-plugin = { version = "2.4.0", features = ["build"] }
+schemars = "0.8"
+serde = "1"
+
+[dev-dependencies]
+tauri = { version = "2.8.5", default-features = false, features = ["test"] }
+tempfile = "3"

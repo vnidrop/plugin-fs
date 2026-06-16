@@ -1,0 +1,7 @@
+package app.tauri.annotation
+
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class TauriPlugin(
+    val permissions: Array<Permission> = []
+)

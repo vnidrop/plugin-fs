@@ -1,48 +1,180 @@
-use tauri::{
-  plugin::{Builder, TauriPlugin},
-  Manager, Runtime,
-};
+//! Overview and usage is [here](https://crates.io/crates/tauri-plugin-vnidrop-fs)
 
-pub use models::*;
+#![cfg_attr(not(target_os = "android"), allow(unused_variables))]
 
-#[cfg(desktop)]
-mod desktop;
-#[cfg(mobile)]
-mod mobile;
+mod cmds;
+mod protocols;
+mod config;
+mod scope;
+mod utils;
 
-mod commands;
-mod error;
-mod models;
+pub mod api;
 
-pub use error::{Error, Result};
+use utils::*;
 
-#[cfg(desktop)]
-use desktop::VnidropFs;
-#[cfg(mobile)]
-use mobile::VnidropFs;
+pub use api::models::*;
+pub use api::consts::*;
 
-/// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the vnidrop-fs APIs.
-pub trait VnidropFsExt<R: Runtime> {
-  fn vnidrop_fs(&self) -> &VnidropFs<R>;
-}
+#[cfg(target_os = "ios")]
+tauri::ios_plugin_binding!(init_plugin_vnidrop_fs);
 
-impl<R: Runtime, T: Manager<R>> crate::VnidropFsExt<R> for T {
-  fn vnidrop_fs(&self) -> &VnidropFs<R> {
-    self.state::<VnidropFs<R>>().inner()
-  }
+#[cfg(target_os = "ios")]
+pub(crate) struct IosFs<R: tauri::Runtime> {
+    #[allow(dead_code)]
+    handle: tauri::plugin::PluginHandle<R>,
 }
 
 /// Initializes the plugin.
-pub fn init<R: Runtime>() -> TauriPlugin<R> {
-  Builder::new("vnidrop-fs")
-    .invoke_handler(tauri::generate_handler![commands::ping])
-    .setup(|app, api| {
-      #[cfg(mobile)]
-      let vnidrop_fs = mobile::init(app, api)?;
-      #[cfg(desktop)]
-      let vnidrop_fs = desktop::init(app, api)?;
-      app.manage(vnidrop_fs);
-      Ok(())
-    })
-    .build()
+/// 
+/// # Usage
+/// `src-tauri/src/lib.rs`
+/// ```ignore
+/// #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// pub fn run() {
+///     tauri::Builder::default()
+///         .plugin(tauri_plugin_vnidrop_fs::init())
+///         .run(tauri::generate_context!())
+///         .expect("error while running tauri application");
+/// }
+/// ```
+pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, Option<config::Config>> {
+    let builder = tauri::plugin::Builder::<R, Option<config::Config>>::new("vnidrop-fs")
+        .setup(|app, api| {
+            use tauri::Manager as _;
+
+            #[cfg(target_os = "android")] {
+                let handle = api.register_android_plugin("plugin.vnidrop.fs", "AndroidFsPlugin")?;
+                let afs_sync = crate::api::api_sync::AndroidFs { handle: handle.clone() };
+                let afs_async = crate::api::api_async::AndroidFs { handle: handle.clone() };
+                app.manage(afs_sync);
+                app.manage(afs_async);
+
+                #[cfg(feature = "commands")] {
+                    app.manage(cmds::new_file_stream_resources_state(app.app_handle().clone()));
+                    app.manage(cmds::new_file_writer_resources_state(app.app_handle().clone()));
+                }
+
+                #[cfg(any(feature = "protocol_content", feature = "protocol_thumbnail"))] {
+                    app.manage(protocols::new_config_state(api.config().as_ref(), app));
+                }
+            }
+            #[cfg(target_os = "ios")] {
+                let handle = api.register_ios_plugin(init_plugin_vnidrop_fs)?;
+                app.manage(IosFs { handle });
+            }
+            #[cfg(not(target_os = "android"))] {
+                let afs_sync = crate::api::api_sync::AndroidFs::<R> { handle: Default::default() };
+                let afs_async = crate::api::api_async::AndroidFs::<R> { handle: Default::default() };
+                app.manage(afs_sync);
+                app.manage(afs_async);
+            }
+
+            Ok(())
+        });
+
+    #[cfg(feature = "commands")]
+    let builder = builder
+        .js_init_script(format!(
+            "window.__TAURI_VNIDROP_FS_PLUGIN_INTERNALS__ = {{ isAndroid: {}, isIos: {} }}; window.__TAURI_ANDROID_FS_PLUGIN_INTERNALS__ = {{ isAndroid: {} }};",
+            cfg!(target_os = "android"),
+            cfg!(target_os = "ios"),
+            cfg!(target_os = "android")
+        ))
+        .invoke_handler(tauri::generate_handler![
+            cmds::get_android_api_level,
+            cmds::get_name,
+            cmds::get_byte_length,
+            cmds::get_mime_type,
+            cmds::get_type,
+            cmds::get_metadata,
+            cmds::get_fs_path,
+            cmds::get_thumbnail,
+            cmds::get_thumbnail_as_bytes,
+            cmds::get_thumbnail_as_base64,
+            cmds::get_thumbnail_as_data_url,
+            cmds::list_volumes,
+            cmds::create_new_public_file,
+            cmds::create_new_public_image_file,
+            cmds::create_new_public_video_file,
+            cmds::create_new_public_audio_file,
+            cmds::scan_public_file,
+            cmds::set_public_file_pending,
+            cmds::request_public_files_permission,
+            cmds::check_public_files_permission,
+            cmds::create_new_file,
+            cmds::create_new_dir,
+            cmds::create_dir,
+            cmds::count_all_file_streams,
+            cmds::close_all_file_streams,
+            cmds::open_read_file_stream,
+            cmds::open_read_text_file_lines_stream,
+            cmds::open_write_file_stream,
+            cmds::read_file,
+            cmds::read_file_as_base64,
+            cmds::read_file_as_data_url,
+            cmds::read_text_file,
+            cmds::write_file,
+            cmds::write_text_file,
+            cmds::copy_file,
+            cmds::truncate_file,
+            cmds::read_dir,
+            cmds::rename_file,
+            cmds::rename_dir,
+            cmds::remove_file,
+            cmds::remove_empty_dir,
+            cmds::remove_dir_all,
+            cmds::check_picker_uri_permission,
+            cmds::persist_picker_uri_permission,
+            cmds::check_persisted_picker_uri_permission,
+            cmds::release_persisted_picker_uri_permission,
+            cmds::release_all_persisted_picker_uri_permissions,
+            cmds::show_open_file_picker,
+            cmds::show_open_dir_picker,
+            cmds::show_save_file_picker,
+            cmds::show_share_file_dialog,
+            cmds::show_view_file_dialog,
+            cmds::show_view_dir_dialog,
+        ]);
+
+    #[cfg(all(target_os = "android", feature = "protocol_thumbnail"))]
+    let builder = builder
+        .register_asynchronous_uri_scheme_protocol(
+            protocols::protocol_thumbnail::URI_SCHEME, 
+            protocols::protocol_thumbnail::protocol,
+        );
+
+    #[cfg(all(target_os = "android", feature = "protocol_content"))]
+    let builder = builder
+        .register_asynchronous_uri_scheme_protocol(
+            protocols::protocol_content::URI_SCHEME, 
+            protocols::protocol_content::protocol,
+        );
+    
+    builder.build()
+}
+
+pub trait AndroidFsExt<R: tauri::Runtime> {
+
+    /// Provides an API for accessing the Android file system.
+    /// 
+    /// It is a blocking-based API. If you need an asynchronous API, use [`AndroidFsExt::android_fs_async`].
+    fn android_fs(&self) -> &api::api_sync::AndroidFs<R>;
+
+    /// Provides an asynchronous API for accessing the Android file system.
+    fn android_fs_async(&self) -> &api::api_async::AndroidFs<R>;
+}
+
+impl<R: tauri::Runtime, T: tauri::Manager<R>> AndroidFsExt<R> for T {
+
+    fn android_fs(&self) -> &api::api_sync::AndroidFs<R> {
+        self.try_state::<api::api_sync::AndroidFs<R>>()
+            .map(|i| i.inner())
+            .expect("tauri_plugin_vnidrop_fs should be initialized to use; see https://crates.io/crates/tauri-plugin-vnidrop-fs")
+    }
+
+    fn android_fs_async(&self) -> &api::api_async::AndroidFs<R> {
+        self.try_state::<api::api_async::AndroidFs<R>>()
+            .map(|i| i.inner())
+            .expect("tauri_plugin_vnidrop_fs should be initialized to use; see https://crates.io/crates/tauri-plugin-vnidrop-fs")
+    }
 }

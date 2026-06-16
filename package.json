@@ -1,31 +1,69 @@
 {
   "name": "@vnidrop/tauri-plugin-fs",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "AbassHammed",
-  "description": "",
+  "description": "Cross-platform filesystem manager for Tauri with Android SAF and iOS document picker support.",
+  "keywords": [
+    "tauri",
+    "plugin",
+    "fs",
+    "filesystem",
+    "android",
+    "ios",
+    "mobile"
+  ],
+  "license": "MIT OR Apache-2.0",
+  "sideEffects": false,
   "type": "module",
   "types": "./dist-js/index.d.ts",
   "main": "./dist-js/index.cjs",
   "module": "./dist-js/index.js",
   "exports": {
-    "types": "./dist-js/index.d.ts",
-    "import": "./dist-js/index.js",
-    "require": "./dist-js/index.cjs"
+    ".": {
+      "types": "./dist-js/index.d.ts",
+      "import": "./dist-js/index.js",
+      "require": "./dist-js/index.cjs"
+    },
+    "./android": {
+      "types": "./dist-js/android.d.ts",
+      "import": "./dist-js/android.js",
+      "require": "./dist-js/android.cjs"
+    },
+    "./ios": {
+      "types": "./dist-js/ios.d.ts",
+      "import": "./dist-js/ios.js",
+      "require": "./dist-js/ios.cjs"
+    }
   },
   "files": [
     "dist-js",
-    "README.md"
+    "README.md",
+    "LICENSE-APACHE.txt",
+    "LICENSE-MIT.txt"
   ],
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "test": "vitest run",
+    "test:android:jvm": "cd android && ./gradlew testDebugUnitTest",
+    "test:android:connected": "cd android && ./gradlew connectedDebugAndroidTest",
+    "test:ios": "cd ios && swift test",
+    "test:types": "tsc -p tsconfig.test.json --noEmit",
+    "example:install": "cd examples/tauri-app && npm ci",
+    "example:build": "cd examples/tauri-app && npm run build",
+    "example:check": "npm run example:install && npm run example:build && cd examples/tauri-app/src-tauri && cargo check",
+    "check": "npm run build && npm run test && npm run test:types && cargo check --all-features && cargo test"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "create-web-stream": "^1.1.1"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.0.0",
     "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
     "typescript": "^5.3.3",
-    "tslib": "^2.6.2"
+    "vitest": "^4.1.9"
   }
 }

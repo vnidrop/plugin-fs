@@ -7,6 +7,16 @@
   ],
   "permissions": [
     "core:default",
-    "vnidrop-fs:default"
+    "dialog:default",
+    "fs:default",
+    "fs:read-all",
+    "fs:write-all",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "**"
+      ]
+    },
+    "vnidrop-fs:all"
   ]
 }
