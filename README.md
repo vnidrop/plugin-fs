@@ -75,12 +75,15 @@ configuration is:
 }
 ```
 
-For production, prefer a tighter scope:
+The plugin default is intentionally read-only. It enables metadata, read,
+picker, and non-mutating helper commands, but not create, write, rename,
+delete, or persisted permission lifecycle commands. For production, prefer a
+tighter scope and opt into only the command profile your app needs:
 
 ```json
 {
   "permissions": [
-    "vnidrop-fs:all-without-delete",
+    "vnidrop-fs:read-only",
     {
       "identifier": "vnidrop-fs:scope",
       "allow": ["$APPDATA/files/**/*"],
@@ -102,8 +105,9 @@ Treat filesystem access as an explicit capability:
 
 - Prefer picker-returned mobile URI objects over raw paths.
 - Keep production capability files narrow. Do not ship `vnidrop-fs:all`,
-  `fs:read-all`, `fs:write-all`, or `"allow": ["**"]` unless the whole app is
-  intended to manage every reachable file.
+  `vnidrop-fs:all-without-delete`, `fs:read-all`, `fs:write-all`, or
+  `"allow": ["**"]` unless the whole app is intended to manage every reachable
+  file.
 - Android `content://` operations are authorized by Android URI permissions and
   document providers. Destructive operations such as rename and delete should
   only be exposed in your UI for URIs the user selected or the app created.

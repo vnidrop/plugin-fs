@@ -4,7 +4,7 @@ Default permissions for the plugin
 
 #### This default permission set includes the following:
 
-- `all-without-delete`
+- `read-only`
 
 ## Permission Table
 
@@ -1415,6 +1415,19 @@ Enables the write_text_file command without any pre-configured scope.
 <td>
 
 Denies the write_text_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`vnidrop-fs:read-only`
+
+</td>
+<td>
+
+This enables read-only commands and non-mutating picker/metadata helpers.
 
 </td>
 </tr>
