@@ -1,5 +1,5 @@
 {
-  "name": "tauri-app",
+  "name": "vnidrop-fs-example",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
-    "tauri-plugin-vnidrop-fs-api": "file:../../"
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "@vnidrop/tauri-plugin-fs": "file:../../"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.0.0",

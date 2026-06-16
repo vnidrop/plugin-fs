@@ -1,10 +1,10 @@
 {
-  "productName": "tauri-app",
+  "productName": "Vnidrop FS Example",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.vnidrop.fs.example",
   "build": {
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
@@ -16,10 +16,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
+        "height": 760,
         "resizable": true,
-        "title": "tauri-app",
-        "width": 800
+        "title": "Vnidrop FS Example",
+        "width": 1080
       }
     ]
   },
