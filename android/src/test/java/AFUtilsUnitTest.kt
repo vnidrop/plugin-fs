@@ -29,4 +29,30 @@ class AFUtilsUnitTest {
         assertEquals("file:///data/user/0/app/files/local.txt", obj.getString("uri"))
         assertTrue(obj.isNull("documentTopTreeUri"))
     }
+
+    @Test
+    fun relativePathValidationRejectsTraversalAndSeparators() {
+        assertEquals("safe/report.txt", AFUtils.validateRelativePath("safe/report.txt"))
+
+        listOf("../secret.txt", "safe/../secret.txt", "/secret.txt", "safe\\secret.txt", "./secret.txt").forEach {
+            try {
+                AFUtils.validateRelativePath(it)
+                throw AssertionError("expected invalid relative path: $it")
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    @Test
+    fun fileNameValidationRejectsPathComponents() {
+        assertEquals("report.txt", AFUtils.validateFileName("report.txt"))
+
+        listOf("", ".", "..", "../report.txt", "nested/report.txt", "nested\\report.txt").forEach {
+            try {
+                AFUtils.validateFileName(it)
+                throw AssertionError("expected invalid file name: $it")
+            } catch (_: Exception) {
+            }
+        }
+    }
 }

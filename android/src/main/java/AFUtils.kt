@@ -181,4 +181,52 @@ class AFUtils private constructor() { companion object {
 
         throw Exception("Failed to find entry: $uri")
     }
+
+    fun validateFileName(name: String): String {
+        if (
+            name.isEmpty() ||
+            name == "." ||
+            name == ".." ||
+            name.contains('/') ||
+            name.contains('\\') ||
+            name.any { it.code < 0x20 }
+        ) {
+            throw Exception("Illegal file name: $name")
+        }
+
+        return name
+    }
+
+    fun validateRelativePath(relativePath: String, allowEmpty: Boolean = false): String {
+        if (relativePath.isEmpty()) {
+            if (allowEmpty) return ""
+            throw Exception("Relative path is empty.")
+        }
+        if (relativePath.startsWith('/')) {
+            throw Exception("Illegal relative path format, starts with '/'.")
+        }
+        if (relativePath.contains('\\')) {
+            throw Exception("Illegal relative path format, contains '\\'.")
+        }
+
+        val parts = relativePath.split('/').filter { it.isNotEmpty() }
+        if (parts.any { it == "." || it == ".." || it.any { ch -> ch.code < 0x20 } }) {
+            throw Exception("Illegal relative path segment: $relativePath")
+        }
+
+        return parts.joinToString("/")
+    }
+
+    fun resolveChildFile(parent: File, relativePath: String, allowEmpty: Boolean = false): File {
+        val safeRelativePath = validateRelativePath(relativePath, allowEmpty)
+        val base = parent.canonicalFile
+        val child = if (safeRelativePath.isEmpty()) base else File(base, safeRelativePath).canonicalFile
+        val basePath = base.path
+
+        if (child.path != basePath && !child.path.startsWith(basePath.trimEnd(File.separatorChar) + File.separator)) {
+            throw Exception("Relative path escapes base directory: $relativePath")
+        }
+
+        return child
+    }
 }}

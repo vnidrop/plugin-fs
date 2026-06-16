@@ -29,8 +29,7 @@ public final class SecurityScopedBookmarkStore {
   }
 
   @discardableResult
-  public func save(url: URL, bookmarkData: Data) -> IosFsUri {
-    let id = stableBookmarkId(for: url)
+  public func save(url: URL, bookmarkData: Data, id: String = UUID().uuidString) -> IosFsUri {
     var values = bookmarks()
     values[id] = bookmarkData
     defaults.set(values.mapValues { $0.base64EncodedString() }, forKey: key)
@@ -49,15 +48,6 @@ public final class SecurityScopedBookmarkStore {
     let raw = defaults.dictionary(forKey: key) as? [String: String] ?? [:]
     return raw.compactMapValues { Data(base64Encoded: $0) }
   }
-}
-
-public func stableBookmarkId(for url: URL) -> String {
-  var hash: UInt64 = 0xcbf29ce484222325
-  for byte in Data(url.absoluteString.utf8) {
-    hash ^= UInt64(byte)
-    hash &*= 0x100000001b3
-  }
-  return String(format: "%016llx", hash)
 }
 
 public func uniqueCandidateURL(baseURL: URL, exists: (URL) -> Bool) -> URL {
@@ -80,12 +70,24 @@ public func uniqueCandidateURL(baseURL: URL, exists: (URL) -> Bool) -> URL {
   return baseURL
 }
 
+public func validateFileName(_ name: String) throws -> String {
+  if name.isEmpty || name == "." || name == ".." {
+    throw IosFsCoreError.invalidRelativePath
+  }
+  if name.contains("/") || name.contains("\\") || name.unicodeScalars.contains(where: { $0.value < 0x20 }) {
+    throw IosFsCoreError.invalidRelativePath
+  }
+  return name
+}
+
 public func childURL(baseURL: URL, relativePath: String) throws -> URL {
   let parts = relativePath
     .split(separator: "/", omittingEmptySubsequences: true)
     .map(String.init)
 
-  if parts.contains("..") || relativePath.hasPrefix("/") {
+  if relativePath.hasPrefix("/") || relativePath.contains("\\") || parts.contains(where: { part in
+    part == "." || part == ".." || part.unicodeScalars.contains(where: { $0.value < 0x20 })
+  }) {
     throw IosFsCoreError.invalidRelativePath
   }
 

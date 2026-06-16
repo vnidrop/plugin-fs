@@ -55,7 +55,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, Option<config:
                 }
 
                 #[cfg(any(feature = "protocol_content", feature = "protocol_thumbnail"))] {
-                    app.manage(protocols::new_config_state(api.config().as_ref(), app));
+                    app.manage(protocols::new_config_state(api.config().as_ref(), app)?);
                 }
             }
             #[cfg(target_os = "ios")] {

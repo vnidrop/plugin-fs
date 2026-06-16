@@ -146,14 +146,15 @@ export async function releaseSecurityScopedBookmark(bookmarkId: string): Promise
  * Persists a security-scoped bookmark for an iOS URL.
  *
  * Picker results are already persisted. Call this for URLs obtained through
- * other trusted flows when you need future access.
+ * other trusted flows when you need future access. Raw string paths are limited
+ * to app-container file URLs; external documents should come from a picker.
  */
 export async function persistSecurityScopedBookmark(uri: IosFsUri | FsPath): Promise<IosFsUri> {
 	return invoke('plugin:vnidrop-fs|persistSecurityScopedBookmark', { uri: mapFsPathForInput(uri) })
 }
 
 /**
- * Reads an iOS file as bytes.
+ * Reads an iOS app-local file URL or picker URI as bytes.
  */
 export async function readFile(uri: IosFsUri | FsPath): Promise<Uint8Array<ArrayBuffer>> {
 	const bytes = await invoke<number[]>('plugin:vnidrop-fs|readFile', { uri: mapFsPathForInput(uri) })
@@ -161,14 +162,14 @@ export async function readFile(uri: IosFsUri | FsPath): Promise<Uint8Array<Array
 }
 
 /**
- * Reads an iOS file as text.
+ * Reads an iOS app-local file URL or picker URI as text.
  */
 export async function readTextFile(uri: IosFsUri | FsPath, options?: IosReadTextFileOptions): Promise<string> {
 	return invoke('plugin:vnidrop-fs|readTextFile', { uri: mapFsPathForInput(uri), encoding: options?.encoding ?? null })
 }
 
 /**
- * Writes bytes to an iOS file URL or picker URI.
+ * Writes bytes to an iOS app-local file URL or picker URI.
  */
 export async function writeFile(
 	uri: IosFsUri | FsPath,
@@ -183,7 +184,7 @@ export async function writeFile(
 }
 
 /**
- * Writes text to an iOS file URL or picker URI.
+ * Writes text to an iOS app-local file URL or picker URI.
  */
 export async function writeTextFile(
 	uri: IosFsUri | FsPath,
@@ -239,7 +240,7 @@ export async function createNewDir(baseDirUri: IosFsUri, relativePath: string): 
 }
 
 /**
- * Copies one iOS file URL or picker URI to another file URL or picker URI.
+ * Copies between iOS app-local file URLs and/or picker URIs.
  */
 export async function copyFile(srcPath: IosFsUri | FsPath, destPath: IosFsUri | FsPath): Promise<void> {
 	return invoke('plugin:vnidrop-fs|copyFile', {
@@ -285,14 +286,14 @@ export async function removeDirAll(uri: IosFsUri): Promise<void> {
 }
 
 /**
- * Checks whether an iOS file URL or picker URI exists.
+ * Checks whether an iOS app-local file URL or picker URI exists.
  */
 export async function exists(uri: IosFsUri | FsPath): Promise<boolean> {
 	return invoke('plugin:vnidrop-fs|exists', { uri: mapFsPathForInput(uri) })
 }
 
 /**
- * Reads metadata for an iOS file URL or picker URI.
+ * Reads metadata for an iOS app-local file URL or picker URI.
  */
 export async function getMetadata(uri: IosFsUri | FsPath): Promise<IosEntryMetadata> {
 	const entry = await invoke<IosEntryMetadataInner>('plugin:vnidrop-fs|getMetadata', { uri: mapFsPathForInput(uri) })

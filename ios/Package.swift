@@ -2,7 +2,8 @@
 import Foundation
 import PackageDescription
 
-let tauriApiPath = FileManager.default.fileExists(atPath: "../.tauri/tauri-api/Package.swift")
+let useTauriStub = ProcessInfo.processInfo.environment["VNIDROP_FS_USE_TAURI_STUB"] == "1"
+let tauriApiPath = !useTauriStub && FileManager.default.fileExists(atPath: "../.tauri/tauri-api/Package.swift")
   ? "../.tauri/tauri-api"
   : "test-support/tauri-api"
 

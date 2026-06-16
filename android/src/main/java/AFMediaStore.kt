@@ -26,13 +26,14 @@ class AFMediaStore private constructor() { companion object {
         isPending: Boolean,
         ctx: Context
     ): JSObject {
+        val safeRelativePath = AFUtils.validateRelativePath(relativePath)
 
         val uri = when {
             // Q は Android 10
             Build.VERSION_CODES.Q <= Build.VERSION.SDK_INT -> {
                 _createNewFile(
                     volumeName ?: MediaStore.VOLUME_EXTERNAL_PRIMARY,
-                    relativePath,
+                    safeRelativePath,
                     mimeType,
                     isPending,
                     ctx
@@ -43,7 +44,7 @@ class AFMediaStore private constructor() { companion object {
                     throw Exception("volume name is available for Android 10 or higher")
                 }
 
-                _createNewFileLegacy(relativePath, mimeType, ctx)
+                _createNewFileLegacy(safeRelativePath, mimeType, ctx)
             }
         }
 
@@ -73,14 +74,15 @@ class AFMediaStore private constructor() { companion object {
         newName: String,
         ctx: Context
     ) {
+        val safeNewName = AFUtils.validateFileName(newName)
 
         when {
             // Q は Android 10
             Build.VERSION_CODES.Q <= Build.VERSION.SDK_INT -> {
-                _rename(uri, newName, ctx)
+                _rename(uri, safeNewName, ctx)
             }
             else -> {
-                _renameLegacy(uri, newName, ctx)
+                _renameLegacy(uri, safeNewName, ctx)
             }
         }
     }
@@ -411,10 +413,7 @@ private fun _createNewFile(
     ctx: Context
 ): Uri {
 
-    val entry = File(relativePath)
-    if (entry.isAbsolute) {
-        throw IllegalArgumentException("absolute path is not supported")
-    }
+    val entry = File(AFUtils.validateRelativePath(relativePath))
 
     val displayName = entry.name
     val parentRelativePath = entry.parent
@@ -452,8 +451,8 @@ private fun _createNewFileLegacy(
     ctx: Context
 ): Uri {
 
-    val relativePath = relativePath.trimStart('/')
-    val path = Environment.getExternalStorageDirectory().absolutePath + "/" + relativePath
+    val relativePath = AFUtils.validateRelativePath(relativePath)
+    val path = AFUtils.resolveChildFile(Environment.getExternalStorageDirectory(), relativePath).path
     val mimeType = mimeType ?: AFUtils.guessFileMimeTypeFromExtension(File(path))
     val baseContentUri = getBaseContentUriLegacy(relativePath, mimeType)
 
