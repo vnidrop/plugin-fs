@@ -25,6 +25,7 @@ export default {
   ],
   plugins: [
     typescript({
+      tsconfig: './tsconfig.build.json',
       declaration: true,
       declarationDir: dirname(pkg.exports['.'].import)
     })
