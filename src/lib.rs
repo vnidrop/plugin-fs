@@ -16,6 +16,11 @@ use utils::*;
 pub use api::models::*;
 pub use api::consts::*;
 pub use fs::{
+    VnidropDirEntry,
+    VnidropDirTarget,
+    VnidropEntryInfo,
+    VnidropEntryKind,
+    VnidropEntryTarget,
     VnidropFileReader,
     VnidropFileWriter,
     VnidropFs,
