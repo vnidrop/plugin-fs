@@ -59,6 +59,9 @@ impl From<crate::Error> for tauri::Error {
             #[cfg(target_os = "android")]
             InnerError::PluginInvoke(e) => tauri::Error::PluginInvoke(e),
 
+            #[cfg(target_os = "ios")]
+            InnerError::PluginInvoke(e) => tauri::Error::Anyhow(e.into()),
+
             e => tauri::Error::Anyhow(e.into()),
         }
     }
@@ -70,7 +73,7 @@ enum InnerError {
     #[error("{0}")]
     Raw(Cow<'static, str>),
 
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "android", target_os = "ios"))]
     #[error(transparent)]
     PluginInvoke(tauri::plugin::mobile::PluginInvokeError),
 
@@ -125,7 +128,7 @@ macro_rules! impl_into_err_from_inner {
     };
 }
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 impl_into_err_from_inner!(tauri::plugin::mobile::PluginInvokeError, e => crate::Error { inner: InnerError::PluginInvoke(e) });
 
 #[cfg(target_os = "android")]

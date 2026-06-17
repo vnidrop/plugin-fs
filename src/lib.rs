@@ -7,6 +7,7 @@ mod protocols;
 mod config;
 mod scope;
 mod utils;
+mod fs;
 
 pub mod api;
 
@@ -14,6 +15,13 @@ use utils::*;
 
 pub use api::models::*;
 pub use api::consts::*;
+pub use fs::{
+    VnidropFileReader,
+    VnidropFileWriter,
+    VnidropFs,
+    VnidropFsTarget,
+    VnidropOpenWriteOptions,
+};
 
 #[cfg(target_os = "ios")]
 tauri::ios_plugin_binding!(init_plugin_vnidrop_fs);
@@ -48,6 +56,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, Option<config:
                 let afs_async = crate::api::api_async::AndroidFs { handle: handle.clone() };
                 app.manage(afs_sync);
                 app.manage(afs_async);
+                app.manage(VnidropFs::android(handle.clone()));
 
                 #[cfg(feature = "commands")] {
                     app.manage(cmds::new_file_stream_resources_state(app.app_handle().clone()));
@@ -60,13 +69,17 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, Option<config:
             }
             #[cfg(target_os = "ios")] {
                 let handle = api.register_ios_plugin(init_plugin_vnidrop_fs)?;
-                app.manage(IosFs { handle });
+                app.manage(IosFs { handle: handle.clone() });
+                app.manage(VnidropFs::ios(handle));
             }
             #[cfg(not(target_os = "android"))] {
                 let afs_sync = crate::api::api_sync::AndroidFs::<R> { handle: Default::default() };
                 let afs_async = crate::api::api_async::AndroidFs::<R> { handle: Default::default() };
                 app.manage(afs_sync);
                 app.manage(afs_async);
+            }
+            #[cfg(not(any(target_os = "android", target_os = "ios")))] {
+                app.manage(VnidropFs::<R>::desktop());
             }
 
             Ok(())
@@ -164,6 +177,15 @@ pub trait AndroidFsExt<R: tauri::Runtime> {
     fn android_fs_async(&self) -> &api::api_async::AndroidFs<R>;
 }
 
+pub trait VnidropFsExt<R: tauri::Runtime> {
+    /// Provides the Rust backend filesystem API.
+    ///
+    /// This API is intended for Rust-side filesystem workflows. It returns
+    /// standard Rust `Read` and `Write` handles so large files can be streamed
+    /// without routing bytes through frontend IPC.
+    fn vnidrop_fs(&self) -> &VnidropFs<R>;
+}
+
 impl<R: tauri::Runtime, T: tauri::Manager<R>> AndroidFsExt<R> for T {
 
     fn android_fs(&self) -> &api::api_sync::AndroidFs<R> {
@@ -174,6 +196,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AndroidFsExt<R> for T {
 
     fn android_fs_async(&self) -> &api::api_async::AndroidFs<R> {
         self.try_state::<api::api_async::AndroidFs<R>>()
+            .map(|i| i.inner())
+            .expect("tauri_plugin_vnidrop_fs should be initialized to use; see https://crates.io/crates/tauri-plugin-vnidrop-fs")
+    }
+}
+
+impl<R: tauri::Runtime, T: tauri::Manager<R>> VnidropFsExt<R> for T {
+    fn vnidrop_fs(&self) -> &VnidropFs<R> {
+        self.try_state::<VnidropFs<R>>()
             .map(|i| i.inner())
             .expect("tauri_plugin_vnidrop_fs should be initialized to use; see https://crates.io/crates/tauri-plugin-vnidrop-fs")
     }

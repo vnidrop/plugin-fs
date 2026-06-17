@@ -54,6 +54,9 @@ commands.allow = [
     "releaseSecurityScopedBookmark",
     "persistSecurityScopedBookmark",
     "readFile",
+    "openReadFileStream",
+    "readFileStreamChunk",
+    "closeFileStream",
     "readTextFile",
     "readDir",
     "createDir",
@@ -63,6 +66,8 @@ commands.allow = [
     "renameDir",
     "exists",
     "getMetadata",
+    "closeAllFileStreams",
+    "countAllFileStreams",
     "showOpenFilePicker",
     "showOpenDirPicker",
     "showSaveFilePicker"
