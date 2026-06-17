@@ -1,4 +1,4 @@
-use tauri_plugin_vnidrop_fs::AndroidFsExt as _;
+use tauri_plugin_vnidrop_fs::{AndroidFsExt as _, VnidropFsExt as _};
 
 #[test]
 fn plugin_registers_android_fs_state_with_tauri_mock_runtime() {
@@ -9,4 +9,5 @@ fn plugin_registers_android_fs_state_with_tauri_mock_runtime() {
 
 	let _sync_api = app.android_fs();
 	let _async_api = app.android_fs_async();
+	let _backend_api = app.vnidrop_fs();
 }

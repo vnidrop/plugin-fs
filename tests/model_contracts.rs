@@ -2,7 +2,7 @@ mod support;
 
 use std::path::Path;
 
-use tauri_plugin_vnidrop_fs::FileUri;
+use tauri_plugin_vnidrop_fs::{FileUri, IosFsUri};
 
 #[test]
 fn file_uri_serializes_with_android_field_names() {
@@ -15,6 +15,23 @@ fn file_uri_serializes_with_android_field_names() {
 		r#"{"uri":"content://com.example.provider/tree/root/document/root%2Ffile.txt","documentTopTreeUri":"content://com.example.provider/tree/root"}"#
 	);
 	assert_eq!(FileUri::from_json_str(json).expect("uri should deserialize"), uri);
+}
+
+#[test]
+fn ios_uri_serializes_with_frontend_field_names() {
+	let uri = IosFsUri {
+		uri: "file:///Documents/report.txt".into(),
+		bookmark_id: Some("bookmark-1".into()),
+		is_directory: Some(false),
+	};
+
+	let json = serde_json::to_string(&uri).expect("iOS URI should serialize");
+
+	assert_eq!(
+		json,
+		r#"{"uri":"file:///Documents/report.txt","bookmarkId":"bookmark-1","isDirectory":false}"#
+	);
+	assert_eq!(serde_json::from_str::<IosFsUri>(&json).expect("iOS URI should deserialize"), uri);
 }
 
 #[test]
