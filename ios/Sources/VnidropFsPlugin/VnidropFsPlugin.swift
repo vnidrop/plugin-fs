@@ -327,6 +327,34 @@ final class VnidropFsPlugin: Plugin {
     }
   }
 
+  @objc public func resolveFile(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(BaseDirRelativePathArgs.self)
+    run(invoke) {
+      let url = try self.childUrl(base: args.baseDirUri, relativePath: args.relativePath)
+      return try self.withAccess(try self.resolve(.uri(args.baseDirUri)).url) {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+          throw FsError("file does not exist")
+        }
+        return self.persist(url: url)
+      }
+    }
+  }
+
+  @objc public func resolveDir(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(BaseDirRelativePathArgs.self)
+    run(invoke) {
+      let url = try self.childUrl(base: args.baseDirUri, relativePath: args.relativePath)
+      return try self.withAccess(try self.resolve(.uri(args.baseDirUri)).url) {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+          throw FsError("directory does not exist")
+        }
+        return self.persist(url: url)
+      }
+    }
+  }
+
   @objc public func createNewFile(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(CreateNewFileArgs.self)
     run(invoke) {
