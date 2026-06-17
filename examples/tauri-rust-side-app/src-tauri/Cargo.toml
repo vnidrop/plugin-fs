@@ -1,0 +1,24 @@
+[package]
+name = "vnidrop-fs-rust-side-example"
+version = "0.1.0"
+description = "Rust-side Vnidrop FS plugin example"
+authors = ["Vnidrop"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "tauri_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.2", default-features = false, features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2.11.2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-vnidrop-fs = { path = "../../../" }
