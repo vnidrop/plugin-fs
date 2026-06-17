@@ -80,6 +80,33 @@ private final class SaveFilePickerArgs: Decodable {
   let mimeType: String?
 }
 
+private final class OpenReadFileStreamArgs: Decodable {
+  let uri: IosFsUriOrString
+  let offset: UInt64?
+}
+
+private final class OpenWriteFileStreamArgs: Decodable {
+  let uri: IosFsUriOrString
+  let create: Bool
+  let append: Bool
+  let truncate: Bool
+  let offset: UInt64?
+}
+
+private final class FileStreamIdArgs: Decodable {
+  let id: Int
+}
+
+private final class ReadFileStreamChunkArgs: Decodable {
+  let id: Int
+  let length: Int
+}
+
+private final class WriteFileStreamChunkArgs: Decodable {
+  let id: Int
+  let data: [UInt8]
+}
+
 private final class BookmarkIdArgs: Decodable {
   let bookmarkId: String
 }
@@ -105,6 +132,10 @@ private final class DocumentPickerDelegate: NSObject, UIDocumentPickerDelegate {
 final class VnidropFsPlugin: Plugin {
   private let store = SecurityScopedBookmarkStore(defaults: .standard)
   private var retainedDelegates: [DocumentPickerDelegate] = []
+  private let streamLock = NSLock()
+  private var nextStreamId = 1
+  private var readStreams: [Int: IosReadFileStream] = [:]
+  private var writeStreams: [Int: IosWriteFileStream] = [:]
 
   @objc public func listSecurityScopedBookmarks(_ invoke: Invoke) throws {
     let values = store.bookmarkIds().compactMap { id -> IosFsUri? in
@@ -141,6 +172,36 @@ final class VnidropFsPlugin: Plugin {
     }
   }
 
+  @objc public func openReadFileStream(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(OpenReadFileStreamArgs.self)
+    run(invoke) {
+      let resolved = try self.resolve(args.uri)
+      let accessed = resolved.url.startAccessingSecurityScopedResource()
+      do {
+        let handle = try FileHandle(forReadingFrom: resolved.url)
+        if let offset = args.offset {
+          try handle.seek(toOffset: offset)
+        }
+        return self.insertReadStream(IosReadFileStream(url: resolved.url, handle: handle, accessed: accessed))
+      } catch {
+        if accessed {
+          resolved.url.stopAccessingSecurityScopedResource()
+        }
+        throw error
+      }
+    }
+  }
+
+  @objc public func readFileStreamChunk(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(ReadFileStreamChunkArgs.self)
+    run(invoke) {
+      guard args.length > 0 else {
+        throw FsError("length must be greater than zero")
+      }
+      return Array(try self.readStream(id: args.id).read(maxLength: args.length))
+    }
+  }
+
   @objc public func readTextFile(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(ReadTextFileArgs.self)
     run(invoke) {
@@ -160,6 +221,67 @@ final class VnidropFsPlugin: Plugin {
           throw FsError("file does not exist")
         }
         try Data(args.data).write(to: resolved.url, options: .atomic)
+      }
+    }
+  }
+
+  @objc public func openWriteFileStream(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(OpenWriteFileStreamArgs.self)
+    run(invoke) {
+      let resolved = try self.resolve(args.uri)
+      let accessed = resolved.url.startAccessingSecurityScopedResource()
+      do {
+        let exists = FileManager.default.fileExists(atPath: resolved.url.path)
+        if !exists {
+          guard args.create else {
+            throw FsError("file does not exist")
+          }
+          guard FileManager.default.createFile(atPath: resolved.url.path, contents: Data()) else {
+            throw FsError("unable to create file")
+          }
+        }
+        let handle = try FileHandle(forWritingTo: resolved.url)
+        if args.append {
+          handle.seekToEndOfFile()
+        } else if args.truncate {
+          handle.truncateFile(atOffset: 0)
+        }
+        if let offset = args.offset {
+          try handle.seek(toOffset: offset)
+        }
+        return self.insertWriteStream(IosWriteFileStream(url: resolved.url, handle: handle, accessed: accessed))
+      } catch {
+        if accessed {
+          resolved.url.stopAccessingSecurityScopedResource()
+        }
+        throw error
+      }
+    }
+  }
+
+  @objc public func writeFileStreamChunk(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(WriteFileStreamChunkArgs.self)
+    runVoid(invoke) {
+      try self.writeStream(id: args.id).write(Data(args.data))
+    }
+  }
+
+  @objc public func flushFileStream(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(FileStreamIdArgs.self)
+    runVoid(invoke) {
+      try self.writeStream(id: args.id).flush()
+    }
+  }
+
+  @objc public func closeFileStream(_ invoke: Invoke) throws {
+    let args = try invoke.parseArgs(FileStreamIdArgs.self)
+    runVoid(invoke) {
+      if let stream = self.removeReadStream(id: args.id) {
+        try stream.close()
+        return
+      }
+      if let stream = self.removeWriteStream(id: args.id) {
+        try stream.close()
       }
     }
   }
@@ -296,6 +418,19 @@ final class VnidropFsPlugin: Plugin {
     }
   }
 
+  @objc public func closeAllFileStreams(_ invoke: Invoke) throws {
+    runVoid(invoke) {
+      let streams = self.removeAllStreams()
+      for stream in streams {
+        try stream.close()
+      }
+    }
+  }
+
+  @objc public func countAllFileStreams(_ invoke: Invoke) throws {
+    invoke.resolve(countStreams())
+  }
+
   @objc public func showOpenFilePicker(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(OpenFilePickerArgs.self)
     presentPicker(invoke: invoke, mode: .open, documentTypes: documentTypes(for: args.mimeTypes), allowsMultipleSelection: args.multiple, cancelValue: [IosFsUri]()) { urls in
@@ -349,6 +484,69 @@ final class VnidropFsPlugin: Plugin {
         invoke.reject(error.localizedDescription)
       }
     }
+  }
+
+  private func insertReadStream(_ stream: IosReadFileStream) -> Int {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    let id = nextStreamId
+    nextStreamId += 1
+    readStreams[id] = stream
+    return id
+  }
+
+  private func insertWriteStream(_ stream: IosWriteFileStream) -> Int {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    let id = nextStreamId
+    nextStreamId += 1
+    writeStreams[id] = stream
+    return id
+  }
+
+  private func readStream(id: Int) throws -> IosReadFileStream {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    guard let stream = readStreams[id] else {
+      throw FsError("read stream not found")
+    }
+    return stream
+  }
+
+  private func writeStream(id: Int) throws -> IosWriteFileStream {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    guard let stream = writeStreams[id] else {
+      throw FsError("write stream not found")
+    }
+    return stream
+  }
+
+  private func removeReadStream(id: Int) -> IosReadFileStream? {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    return readStreams.removeValue(forKey: id)
+  }
+
+  private func removeWriteStream(id: Int) -> IosWriteFileStream? {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    return writeStreams.removeValue(forKey: id)
+  }
+
+  private func removeAllStreams() -> [IosClosableFileStream] {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    let streams: [IosClosableFileStream] = Array(readStreams.values) + Array(writeStreams.values)
+    readStreams.removeAll()
+    writeStreams.removeAll()
+    return streams
+  }
+
+  private func countStreams() -> Int {
+    streamLock.lock()
+    defer { streamLock.unlock() }
+    return readStreams.count + writeStreams.count
   }
 
   private func resolve(_ input: IosFsUriOrString) throws -> (url: URL, uri: IosFsUri?) {
@@ -534,6 +732,106 @@ private struct IosFsEntry: Encodable {
     self.uri = uri
     self.byteLength = byteLength
     self.mimeType = mimeType
+  }
+}
+
+private protocol IosClosableFileStream {
+  func close() throws
+}
+
+private final class IosReadFileStream: IosClosableFileStream {
+  private let url: URL
+  private let handle: FileHandle
+  private let accessed: Bool
+  private let lock = NSLock()
+  private var closed = false
+
+  init(url: URL, handle: FileHandle, accessed: Bool) {
+    self.url = url
+    self.handle = handle
+    self.accessed = accessed
+  }
+
+  func read(maxLength: Int) throws -> Data {
+    lock.lock()
+    defer { lock.unlock() }
+    try assertOpen()
+    return handle.readData(ofLength: maxLength)
+  }
+
+  func close() throws {
+    lock.lock()
+    defer { lock.unlock() }
+    guard !closed else { return }
+    closed = true
+    defer {
+      if accessed {
+        url.stopAccessingSecurityScopedResource()
+      }
+    }
+    try handle.close()
+  }
+
+  deinit {
+    try? close()
+  }
+
+  private func assertOpen() throws {
+    if closed {
+      throw FsError("stream is closed")
+    }
+  }
+}
+
+private final class IosWriteFileStream: IosClosableFileStream {
+  private let url: URL
+  private let handle: FileHandle
+  private let accessed: Bool
+  private let lock = NSLock()
+  private var closed = false
+
+  init(url: URL, handle: FileHandle, accessed: Bool) {
+    self.url = url
+    self.handle = handle
+    self.accessed = accessed
+  }
+
+  func write(_ data: Data) throws {
+    lock.lock()
+    defer { lock.unlock() }
+    try assertOpen()
+    handle.write(data)
+  }
+
+  func flush() throws {
+    lock.lock()
+    defer { lock.unlock() }
+    try assertOpen()
+    try handle.synchronize()
+  }
+
+  func close() throws {
+    lock.lock()
+    defer { lock.unlock() }
+    guard !closed else { return }
+    closed = true
+    defer {
+      if accessed {
+        url.stopAccessingSecurityScopedResource()
+      }
+    }
+    try handle.synchronize()
+    try handle.close()
+  }
+
+  deinit {
+    try? close()
+  }
+
+  private func assertOpen() throws {
+    if closed {
+      throw FsError("stream is closed")
+    }
   }
 }
 

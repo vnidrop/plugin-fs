@@ -35,10 +35,15 @@ commands.allow = [
     "listSecurityScopedBookmarks",
     "resolveSecurityScopedBookmark",
     "readFile",
+    "openReadFileStream",
+    "readFileStreamChunk",
+    "closeFileStream",
     "readTextFile",
     "readDir",
     "exists",
     "getMetadata",
+    "closeAllFileStreams",
+    "countAllFileStreams",
     "showOpenFilePicker",
     "showOpenDirPicker"
 ]

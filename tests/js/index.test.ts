@@ -8,10 +8,12 @@ const tauriFsMock = vi.hoisted(() => ({
 	readDir: vi.fn(),
 	mkdir: vi.fn(),
 	create: vi.fn(),
+	open: vi.fn(),
 	remove: vi.fn(),
 	rename: vi.fn(),
 	exists: vi.fn(),
 	stat: vi.fn(),
+	SeekMode: { Start: 0, Current: 1, End: 2 },
 }))
 
 const tauriDialogMock = vi.hoisted(() => ({
@@ -25,6 +27,10 @@ const androidMock = vi.hoisted(() => ({
 	readTextFile: vi.fn(),
 	writeFile: vi.fn(),
 	writeTextFile: vi.fn(),
+	openReadFileStream: vi.fn(),
+	openWriteFileStream: vi.fn(),
+	closeAllFileStreams: vi.fn(),
+	countAllFileStreams: vi.fn(),
 	readDir: vi.fn(),
 	createDir: vi.fn(),
 	showOpenFilePicker: vi.fn(),
@@ -48,6 +54,10 @@ const iosMock = vi.hoisted(() => ({
 	readTextFile: vi.fn(),
 	writeFile: vi.fn(),
 	writeTextFile: vi.fn(),
+	openReadFileStream: vi.fn(),
+	openWriteFileStream: vi.fn(),
+	closeAllFileStreams: vi.fn(),
+	countAllFileStreams: vi.fn(),
 	readDir: vi.fn(),
 	createDir: vi.fn(),
 	showOpenFilePicker: vi.fn(),
@@ -123,6 +133,7 @@ describe('platform capability helpers', () => {
 			supportsPersistedPickerPermissions: false,
 			supportsThumbnails: false,
 			supportsSecurityScopedBookmarks: false,
+			supportsFileStreams: true,
 		})
 	})
 
@@ -139,6 +150,7 @@ describe('platform capability helpers', () => {
 			supportsPersistedPickerPermissions: true,
 			supportsThumbnails: true,
 			supportsSecurityScopedBookmarks: false,
+			supportsFileStreams: true,
 		})
 	})
 
@@ -155,6 +167,7 @@ describe('platform capability helpers', () => {
 			supportsPersistedPickerPermissions: false,
 			supportsThumbnails: false,
 			supportsSecurityScopedBookmarks: true,
+			supportsFileStreams: true,
 		})
 	})
 })
@@ -174,6 +187,14 @@ describe('desktop routing', () => {
 		tauriFsMock.stat.mockResolvedValue({ isFile: true })
 		tauriFsMock.exists.mockResolvedValue(false)
 		tauriFsMock.create.mockResolvedValue({ close: vi.fn().mockResolvedValue(undefined) })
+		tauriFsMock.open.mockResolvedValue({
+			read: vi.fn()
+				.mockResolvedValueOnce(2)
+				.mockResolvedValueOnce(null),
+			write: vi.fn().mockResolvedValue(2),
+			seek: vi.fn().mockResolvedValue(3),
+			close: vi.fn().mockResolvedValue(undefined),
+		})
 		tauriDialogMock.open.mockResolvedValue(null)
 		tauriDialogMock.save.mockResolvedValue(null)
 	})
@@ -246,6 +267,30 @@ describe('desktop routing', () => {
 		expect(tauriFsMock.create).toHaveBeenCalledWith('/tmp/report (1).txt', undefined)
 		expect(tauriFsMock.mkdir).toHaveBeenCalledWith('/tmp/photos (1)', undefined)
 	})
+
+	it('opens desktop read and write streams with official file handles', async () => {
+		const fs = await import('../../guest-js/index')
+
+		const readStream = await fs.openReadFileStream('/tmp/read.bin', { bufferByteLength: 2, offset: 3, baseDir: 1 } as never)
+		const read = readStream.getReader()
+		await expect(read.read()).resolves.toEqual({ done: false, value: new Uint8Array([0, 0]) })
+		await expect(read.read()).resolves.toEqual({ done: true, value: undefined })
+
+		const writeStream = await fs.openWriteFileStream('/tmp/write.bin', { create: true, offset: 3, baseDir: 1 } as never)
+		const writer = writeStream.getWriter()
+		await writer.write(new Uint8Array([1, 2]))
+		await writer.close()
+
+		expect(tauriFsMock.open).toHaveBeenCalledWith('/tmp/read.bin', { baseDir: 1, read: true })
+		expect(tauriFsMock.open).toHaveBeenCalledWith('/tmp/write.bin', {
+			baseDir: 1,
+			create: true,
+			append: false,
+			truncate: false,
+			write: true,
+		})
+		await expect(fs.countAllFileStreams()).resolves.toBe(0)
+	})
 })
 
 describe('Android routing', () => {
@@ -256,6 +301,10 @@ describe('Android routing', () => {
 		androidMock.readTextFile.mockResolvedValue('android')
 		androidMock.writeFile.mockResolvedValue(undefined)
 		androidMock.writeTextFile.mockResolvedValue(undefined)
+		androidMock.openReadFileStream.mockResolvedValue(new ReadableStream())
+		androidMock.openWriteFileStream.mockResolvedValue(new WritableStream())
+		androidMock.closeAllFileStreams.mockResolvedValue(undefined)
+		androidMock.countAllFileStreams.mockResolvedValue(2)
 		androidMock.readDir.mockResolvedValue([])
 		androidMock.createDir.mockResolvedValue({ uri: 'content://dir/new', documentTopTreeUri: null })
 		androidMock.showOpenFilePicker.mockResolvedValue([{ uri: 'content://file', documentTopTreeUri: null }])
@@ -275,6 +324,10 @@ describe('Android routing', () => {
 		await fs.readTextFile(base, { encoding: 'utf-8' })
 		await fs.writeFile(base, new Uint8Array([1]))
 		await fs.writeTextFile(base, 'body')
+		await fs.openReadFileStream(base, { bufferByteLength: 1 })
+		await fs.openWriteFileStream(base, { create: true })
+		await fs.closeAllFileStreams()
+		await expect(fs.countAllFileStreams()).resolves.toBe(2)
 		await fs.readDir(base, { limit: 10 })
 		await fs.createDir(base, 'nested')
 		await fs.showOpenFilePicker({ mimeTypes: 'text/plain' })
@@ -289,6 +342,10 @@ describe('Android routing', () => {
 		expect(androidMock.readTextFile).toHaveBeenCalledWith(base, { encoding: 'utf-8' })
 		expect(androidMock.writeFile).toHaveBeenCalledWith(base, new Uint8Array([1]), undefined)
 		expect(androidMock.writeTextFile).toHaveBeenCalledWith(base, 'body', undefined)
+		expect(androidMock.openReadFileStream).toHaveBeenCalledWith(base, { bufferByteLength: 1 })
+		expect(androidMock.openWriteFileStream).toHaveBeenCalledWith(base, { create: true })
+		expect(androidMock.closeAllFileStreams).toHaveBeenCalled()
+		expect(androidMock.countAllFileStreams).toHaveBeenCalled()
 		expect(androidMock.readDir).toHaveBeenCalledWith(base, { limit: 10 })
 		expect(androidMock.createDir).toHaveBeenCalledWith(base, 'nested')
 		expect(androidMock.showOpenFilePicker).toHaveBeenCalledWith({ mimeTypes: 'text/plain' })
@@ -316,6 +373,10 @@ describe('iOS routing', () => {
 		iosMock.readTextFile.mockResolvedValue('ios')
 		iosMock.writeFile.mockResolvedValue(undefined)
 		iosMock.writeTextFile.mockResolvedValue(undefined)
+		iosMock.openReadFileStream.mockResolvedValue(new ReadableStream())
+		iosMock.openWriteFileStream.mockResolvedValue(new WritableStream())
+		iosMock.closeAllFileStreams.mockResolvedValue(undefined)
+		iosMock.countAllFileStreams.mockResolvedValue(1)
 		iosMock.readDir.mockResolvedValue([])
 		iosMock.createDir.mockResolvedValue({ uri: 'file:///dir/new', bookmarkId: 'dir-new', isDirectory: true })
 		iosMock.showOpenFilePicker.mockResolvedValue([{ uri: 'file:///file.txt', bookmarkId: 'file' }])
@@ -335,6 +396,10 @@ describe('iOS routing', () => {
 		await fs.readTextFile(base, { encoding: 'utf-8' })
 		await fs.writeFile(base, new Uint8Array([1]))
 		await fs.writeTextFile(base, 'body')
+		await fs.openReadFileStream(base, { bufferByteLength: 1 })
+		await fs.openWriteFileStream(base, { create: true })
+		await fs.closeAllFileStreams()
+		await expect(fs.countAllFileStreams()).resolves.toBe(1)
 		await fs.readDir(base, { limit: 10 })
 		await fs.createDir(base, 'nested')
 		await fs.showOpenFilePicker({ mimeTypes: 'text/plain' })
@@ -349,6 +414,10 @@ describe('iOS routing', () => {
 		expect(iosMock.readTextFile).toHaveBeenCalledWith(base, { encoding: 'utf-8' })
 		expect(iosMock.writeFile).toHaveBeenCalledWith(base, new Uint8Array([1]), undefined)
 		expect(iosMock.writeTextFile).toHaveBeenCalledWith(base, 'body', undefined)
+		expect(iosMock.openReadFileStream).toHaveBeenCalledWith(base, { bufferByteLength: 1 })
+		expect(iosMock.openWriteFileStream).toHaveBeenCalledWith(base, { create: true })
+		expect(iosMock.closeAllFileStreams).toHaveBeenCalled()
+		expect(iosMock.countAllFileStreams).toHaveBeenCalled()
 		expect(iosMock.readDir).toHaveBeenCalledWith(base, { limit: 10 })
 		expect(iosMock.createDir).toHaveBeenCalledWith(base, 'nested')
 		expect(iosMock.showOpenFilePicker).toHaveBeenCalledWith({ mimeTypes: 'text/plain' })

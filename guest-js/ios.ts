@@ -54,6 +54,61 @@ export type IosSaveFilePickerOptions = {
 	mimeType?: string | null
 }
 
+export type IosOpenReadFileStreamOptions = {
+	/**
+	 * Number of bytes requested from native code for each stream pull.
+	 *
+	 * Defaults to 512 KiB. Larger chunks reduce IPC overhead, but also increase
+	 * the amount of data temporarily held by the WebView.
+	 */
+	bufferByteLength?: number
+
+	/**
+	 * Byte offset where reading should begin.
+	 */
+	offset?: number
+
+	/**
+	 * Aborts the stream and releases the native file handle.
+	 */
+	signal?: AbortSignal
+}
+
+export type IosOpenWriteFileStreamOptions = {
+	/**
+	 * Number of bytes buffered before data is sent to native code.
+	 *
+	 * Defaults to 512 KiB.
+	 */
+	bufferByteLength?: number
+
+	/**
+	 * Creates the file when it does not exist.
+	 */
+	create?: boolean
+
+	/**
+	 * Appends to the end of the file instead of replacing existing contents.
+	 */
+	append?: boolean
+
+	/**
+	 * Truncates the file before writing. Defaults to `true` when `append` is
+	 * `false` and no explicit `offset` is provided.
+	 */
+	truncate?: boolean
+
+	/**
+	 * Byte offset where writing should begin.
+	 */
+	offset?: number
+
+	/**
+	 * Aborts the stream and releases the native file handle.
+	 */
+	signal?: AbortSignal
+}
+
 export type IosEntryMetadata =
 	| {
 		type: 'Dir'
@@ -88,6 +143,32 @@ type IosEntryMetadataWithUriInner = IosEntryMetadataInner & { uri: IosFsUri }
 
 function mapFsPathForInput(uri: FsPath | IosFsUri): string | IosFsUri {
 	return uri instanceof URL ? uri.toString() : uri
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+	if (signal?.aborted) {
+		throw signal.reason ?? new Error('The operation was aborted.')
+	}
+}
+
+function mapBufferByteLength(value?: number): number {
+	if (value == null) {
+		return 512 * 1024
+	}
+	if (!Number.isSafeInteger(value) || value <= 0) {
+		throw new RangeError('bufferByteLength must be a positive safe integer.')
+	}
+	return value
+}
+
+function mapOffset(value?: number): number | null {
+	if (value == null) {
+		return null
+	}
+	if (!Number.isSafeInteger(value) || value < 0) {
+		throw new RangeError('offset must be a non-negative safe integer.')
+	}
+	return value
 }
 
 function mapMetadata(entry: IosEntryMetadataInner): IosEntryMetadata {
@@ -162,6 +243,61 @@ export async function readFile(uri: IosFsUri | FsPath): Promise<Uint8Array<Array
 }
 
 /**
+ * Opens an iOS file as a byte `ReadableStream`.
+ *
+ * The native file handle remains open until the stream reaches EOF, is
+ * canceled, errors, or the provided abort signal is triggered. External
+ * document-provider files keep their security-scoped access active for the
+ * lifetime of the stream.
+ */
+export async function openReadFileStream(
+	uri: IosFsUri | FsPath,
+	options?: IosOpenReadFileStreamOptions
+): Promise<ReadableStream<Uint8Array<ArrayBuffer>>> {
+	throwIfAborted(options?.signal)
+	const bufferByteLength = mapBufferByteLength(options?.bufferByteLength)
+	const id = await invoke<number>('plugin:vnidrop-fs|openReadFileStream', {
+		uri: mapFsPathForInput(uri),
+		offset: mapOffset(options?.offset),
+	})
+	let closed = false
+
+	const close = async (): Promise<void> => {
+		if (closed) return
+		closed = true
+		await invoke('plugin:vnidrop-fs|closeFileStream', { id }).catch(() => undefined)
+	}
+
+	return new ReadableStream<Uint8Array<ArrayBuffer>>({
+		start: controller => {
+			options?.signal?.addEventListener('abort', () => {
+				void close().finally(() => controller.error(options.signal?.reason ?? new Error('The operation was aborted.')))
+			}, { once: true })
+		},
+		async pull(controller) {
+			try {
+				throwIfAborted(options?.signal)
+				const bytes = await invoke<number[]>('plugin:vnidrop-fs|readFileStreamChunk', {
+					id,
+					length: bufferByteLength,
+				})
+				if (bytes.length === 0) {
+					await close()
+					controller.close()
+					return
+				}
+				controller.enqueue(new Uint8Array(bytes) as Uint8Array<ArrayBuffer>)
+			}
+			catch (error) {
+				await close()
+				controller.error(error)
+			}
+		},
+		cancel: close,
+	})
+}
+
+/**
  * Reads an iOS app-local file URL or picker URI as text.
  */
 export async function readTextFile(uri: IosFsUri | FsPath, options?: IosReadTextFileOptions): Promise<string> {
@@ -180,6 +316,54 @@ export async function writeFile(
 		uri: mapFsPathForInput(uri),
 		data: Array.from(data),
 		create: options?.create ?? true,
+	})
+}
+
+/**
+ * Opens an iOS file as a byte `WritableStream`.
+ *
+ * The native file handle remains open until the stream is closed, aborted, or
+ * errors. External document-provider files keep their security-scoped access
+ * active for the lifetime of the stream.
+ */
+export async function openWriteFileStream(
+	uri: IosFsUri | FsPath,
+	options?: IosOpenWriteFileStreamOptions
+): Promise<WritableStream<Uint8Array<ArrayBufferLike>>> {
+	throwIfAborted(options?.signal)
+	const id = await invoke<number>('plugin:vnidrop-fs|openWriteFileStream', {
+		uri: mapFsPathForInput(uri),
+		create: options?.create ?? false,
+		append: options?.append ?? false,
+		truncate: options?.truncate ?? (!(options?.append ?? false) && options?.offset == null),
+		offset: mapOffset(options?.offset),
+	})
+	let closed = false
+
+	const close = async (): Promise<void> => {
+		if (closed) return
+		closed = true
+		await invoke('plugin:vnidrop-fs|closeFileStream', { id }).catch(() => undefined)
+	}
+
+	return new WritableStream<Uint8Array<ArrayBufferLike>>({
+		start: controller => {
+			options?.signal?.addEventListener('abort', () => {
+				void close().finally(() => controller.error(options.signal?.reason ?? new Error('The operation was aborted.')))
+			}, { once: true })
+		},
+		async write(chunk) {
+			throwIfAborted(options?.signal)
+			await invoke('plugin:vnidrop-fs|writeFileStreamChunk', {
+				id,
+				data: Array.from(chunk),
+			})
+		},
+		async close() {
+			await invoke('plugin:vnidrop-fs|flushFileStream', { id })
+			await close()
+		},
+		abort: close,
 	})
 }
 
@@ -298,6 +482,22 @@ export async function exists(uri: IosFsUri | FsPath): Promise<boolean> {
 export async function getMetadata(uri: IosFsUri | FsPath): Promise<IosEntryMetadata> {
 	const entry = await invoke<IosEntryMetadataInner>('plugin:vnidrop-fs|getMetadata', { uri: mapFsPathForInput(uri) })
 	return mapMetadata(entry)
+}
+
+/**
+ * Closes every iOS native stream opened by this plugin.
+ *
+ * Existing JavaScript stream objects become unusable after this call.
+ */
+export async function closeAllFileStreams(): Promise<void> {
+	await invoke('plugin:vnidrop-fs|closeAllFileStreams')
+}
+
+/**
+ * Returns the number of currently open iOS native file streams.
+ */
+export async function countAllFileStreams(): Promise<number> {
+	return invoke('plugin:vnidrop-fs|countAllFileStreams')
 }
 
 /**

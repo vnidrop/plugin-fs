@@ -9,6 +9,8 @@ export type {
 	AndroidFsUri,
 	AndroidOpenDirPickerOptions,
 	AndroidOpenFilePickerOptions,
+	AndroidOpenReadFileStreamOptions,
+	AndroidOpenWriteFileStreamOptions,
 	AndroidReadDirOptions,
 	AndroidReadTextFileOptions,
 	AndroidSaveFilePickerOptions,
@@ -22,6 +24,8 @@ export type {
 	IosFsUri,
 	IosOpenDirPickerOptions,
 	IosOpenFilePickerOptions,
+	IosOpenReadFileStreamOptions,
+	IosOpenWriteFileStreamOptions,
 	IosReadDirOptions,
 	IosReadTextFileOptions,
 	IosSaveFilePickerOptions,
@@ -60,30 +64,153 @@ export type FsPath = Android.FsPath
  */
 export type VnidropFsPath = Android.FsPath | Android.AndroidFsUri | Ios.IosFsUri
 
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.readFile`.
+ */
 export type DesktopReadFileOptions = Parameters<typeof TauriFs.readFile>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.readTextFile`.
+ */
 export type DesktopReadTextFileOptions = Parameters<typeof TauriFs.readTextFile>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.writeFile`.
+ */
 export type DesktopWriteFileOptions = Parameters<typeof TauriFs.writeFile>[2]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.writeTextFile`.
+ */
 export type DesktopWriteTextFileOptions = Parameters<typeof TauriFs.writeTextFile>[2]
+
+/**
+ * Desktop file-handle options used by stream APIs.
+ */
+export type DesktopOpenOptions = Parameters<typeof TauriFs.open>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.readDir`.
+ */
 export type DesktopReadDirOptions = Parameters<typeof TauriFs.readDir>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.mkdir`.
+ */
 export type DesktopMkdirOptions = Parameters<typeof TauriFs.mkdir>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.create`.
+ */
 export type DesktopCreateOptions = Parameters<typeof TauriFs.create>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.remove`.
+ */
 export type DesktopRemoveOptions = Parameters<typeof TauriFs.remove>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.rename`.
+ */
 export type DesktopRenameOptions = Parameters<typeof TauriFs.rename>[2]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.exists`.
+ */
 export type DesktopExistsOptions = Parameters<typeof TauriFs.exists>[1]
+
+/**
+ * Desktop-only options forwarded to `@tauri-apps/plugin-fs.stat`.
+ */
 export type DesktopStatOptions = Parameters<typeof TauriFs.stat>[1]
+
+/**
+ * Desktop dialog options accepted by portable open pickers.
+ */
 export type DesktopOpenDialogOptions = Parameters<typeof TauriDialog.open>[0]
+
+/**
+ * Desktop dialog options accepted by the portable save picker.
+ */
 export type DesktopSaveDialogOptions = Parameters<typeof TauriDialog.save>[0]
 
+/**
+ * Text decoding options accepted by `readTextFile` on every platform.
+ */
 export type UnifiedReadTextFileOptions = Android.AndroidReadTextFileOptions | Ios.IosReadTextFileOptions | DesktopReadTextFileOptions
+
+/**
+ * Byte write options accepted by `writeFile` on every platform.
+ */
 export type UnifiedWriteFileOptions = Android.AndroidWriteFileOptions | Ios.IosWriteFileOptions | DesktopWriteFileOptions
+
+/**
+ * Text encoding/write options accepted by `writeTextFile` on every platform.
+ */
 export type UnifiedWriteTextFileOptions = Android.AndroidWriteTextFileOptions | Ios.IosWriteTextFileOptions | DesktopWriteTextFileOptions
+
+/**
+ * Chunked byte-read options accepted by `openReadFileStream`.
+ */
+export type UnifiedOpenReadFileStreamOptions = Android.AndroidOpenReadFileStreamOptions | Ios.IosOpenReadFileStreamOptions | (DesktopOpenOptions & {
+	/** Number of bytes requested for each stream pull. Defaults to 512 KiB. */
+	bufferByteLength?: number
+	/** Byte offset where reading should begin. */
+	offset?: number
+	/** Aborts the stream and releases the file handle. */
+	signal?: AbortSignal
+})
+
+/**
+ * Chunked byte-write options accepted by `openWriteFileStream`.
+ */
+export type UnifiedOpenWriteFileStreamOptions = Android.AndroidOpenWriteFileStreamOptions | Ios.IosOpenWriteFileStreamOptions | (DesktopOpenOptions & {
+	/** Number of bytes buffered before writing. Defaults to 512 KiB. */
+	bufferByteLength?: number
+	/** Byte offset where writing should begin. */
+	offset?: number
+	/** Aborts the stream and releases the file handle. */
+	signal?: AbortSignal
+})
+
+/**
+ * Directory-listing options accepted by `readDir`.
+ */
 export type UnifiedReadDirOptions = Android.AndroidReadDirOptions | Ios.IosReadDirOptions | DesktopReadDirOptions
+
+/**
+ * Removal options accepted by recursive directory deletion on desktop.
+ */
 export type UnifiedRemoveDirAllOptions = DesktopRemoveOptions
+
+/**
+ * Removal options accepted by empty directory deletion on desktop.
+ */
 export type UnifiedRemoveEmptyDirOptions = DesktopRemoveOptions
+
+/**
+ * Existence-check options accepted by desktop paths.
+ */
 export type UnifiedExistsOptions = DesktopExistsOptions
+
+/**
+ * Metadata options accepted by desktop paths.
+ */
 export type UnifiedMetadataOptions = DesktopStatOptions
+
+/**
+ * File picker options accepted by the portable file picker.
+ */
 export type UnifiedOpenFilePickerOptions = Android.AndroidOpenFilePickerOptions | Ios.IosOpenFilePickerOptions | DesktopOpenDialogOptions
+
+/**
+ * Directory picker options accepted by the portable directory picker.
+ */
 export type UnifiedOpenDirPickerOptions = Android.AndroidOpenDirPickerOptions | Ios.IosOpenDirPickerOptions | DesktopOpenDialogOptions
+
+/**
+ * Save picker options accepted by the portable save picker.
+ */
 export type UnifiedSaveFilePickerOptions = Android.AndroidSaveFilePickerOptions | Ios.IosSaveFilePickerOptions | DesktopSaveDialogOptions
 
 /**
@@ -133,6 +260,9 @@ export type PlatformFsCapabilities = {
 
 	/** `true` when iOS security-scoped bookmarks are available. */
 	supportsSecurityScopedBookmarks: boolean
+
+	/** `true` when byte streams can be opened without loading entire files. */
+	supportsFileStreams: boolean
 }
 
 /**
@@ -158,6 +288,7 @@ export function getPlatformFsCapabilities(): PlatformFsCapabilities {
 			supportsPersistedPickerPermissions: true,
 			supportsThumbnails: true,
 			supportsSecurityScopedBookmarks: false,
+			supportsFileStreams: true,
 		}
 	}
 
@@ -170,6 +301,7 @@ export function getPlatformFsCapabilities(): PlatformFsCapabilities {
 			supportsPersistedPickerPermissions: false,
 			supportsThumbnails: false,
 			supportsSecurityScopedBookmarks: true,
+			supportsFileStreams: true,
 		}
 	}
 
@@ -181,8 +313,12 @@ export function getPlatformFsCapabilities(): PlatformFsCapabilities {
 		supportsPersistedPickerPermissions: false,
 		supportsThumbnails: false,
 		supportsSecurityScopedBookmarks: false,
+		supportsFileStreams: true,
 	}
 }
+
+const DEFAULT_STREAM_BUFFER_BYTE_LENGTH = 512 * 1024
+const desktopStreamHandles = new Set<TauriFs.FileHandle>()
 
 function isAndroidFsUri(value: unknown): value is Android.AndroidFsUri {
 	return (
@@ -207,9 +343,145 @@ function mapDesktopPath(path: Android.FsPath): string {
 	return path instanceof URL ? path.toString() : path
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+	if (signal?.aborted) {
+		throw signal.reason ?? new Error('The operation was aborted.')
+	}
+}
+
+function mapStreamBufferByteLength(value?: number): number {
+	if (value == null) {
+		return DEFAULT_STREAM_BUFFER_BYTE_LENGTH
+	}
+	if (!Number.isSafeInteger(value) || value <= 0) {
+		throw new RangeError('bufferByteLength must be a positive safe integer.')
+	}
+	return value
+}
+
+function mapStreamOffset(value?: number): number | null {
+	if (value == null) {
+		return null
+	}
+	if (!Number.isSafeInteger(value) || value < 0) {
+		throw new RangeError('offset must be a non-negative safe integer.')
+	}
+	return value
+}
+
 async function createDesktopEmptyFile(path: Android.FsPath, options?: DesktopCreateOptions): Promise<void> {
 	const file = await TauriFs.create(mapDesktopPath(path), options)
 	await file.close()
+}
+
+async function closeDesktopFileHandle(file: TauriFs.FileHandle): Promise<void> {
+	if (!desktopStreamHandles.delete(file)) return
+	await file.close()
+}
+
+function mapDesktopReadStreamOptions(options?: UnifiedOpenReadFileStreamOptions): DesktopOpenOptions {
+	const { bufferByteLength: _bufferByteLength, offset: _offset, signal: _signal, ...openOptions } = (options ?? {}) as DesktopOpenOptions & {
+		bufferByteLength?: number
+		offset?: number
+		signal?: AbortSignal
+	}
+	return {
+		...openOptions,
+		read: true,
+	}
+}
+
+function mapDesktopWriteStreamOptions(options?: UnifiedOpenWriteFileStreamOptions): DesktopOpenOptions {
+	const { bufferByteLength: _bufferByteLength, offset, signal: _signal, notification: _notification, ...openOptions } = (options ?? {}) as DesktopOpenOptions & {
+		bufferByteLength?: number
+		offset?: number
+		signal?: AbortSignal
+		notification?: unknown
+	}
+	const append = openOptions.append ?? false
+	return {
+		...openOptions,
+		write: true,
+		create: openOptions.create ?? false,
+		append,
+		truncate: openOptions.truncate ?? (!append && offset == null),
+	}
+}
+
+async function openDesktopReadFileStream(
+	path: Android.FsPath,
+	options?: UnifiedOpenReadFileStreamOptions
+): Promise<ReadableStream<Uint8Array<ArrayBuffer>>> {
+	throwIfAborted((options as { signal?: AbortSignal } | undefined)?.signal)
+	const bufferByteLength = mapStreamBufferByteLength((options as { bufferByteLength?: number } | undefined)?.bufferByteLength)
+	const offset = mapStreamOffset((options as { offset?: number } | undefined)?.offset)
+	const signal = (options as { signal?: AbortSignal } | undefined)?.signal
+	const file = await TauriFs.open(mapDesktopPath(path), mapDesktopReadStreamOptions(options))
+	desktopStreamHandles.add(file)
+	if (offset != null) {
+		await file.seek(offset, TauriFs.SeekMode.Start)
+	}
+
+	return new ReadableStream<Uint8Array<ArrayBuffer>>({
+		start: controller => {
+			signal?.addEventListener('abort', () => {
+				void closeDesktopFileHandle(file).finally(() => controller.error(signal.reason ?? new Error('The operation was aborted.')))
+			}, { once: true })
+		},
+		async pull(controller) {
+			try {
+				throwIfAborted(signal)
+				const buffer = new Uint8Array(bufferByteLength)
+				const read = await file.read(buffer)
+				if (read == null) {
+					await closeDesktopFileHandle(file)
+					controller.close()
+					return
+				}
+				controller.enqueue(buffer.slice(0, read) as Uint8Array<ArrayBuffer>)
+			}
+			catch (error) {
+				await closeDesktopFileHandle(file)
+				controller.error(error)
+			}
+		},
+		cancel: () => closeDesktopFileHandle(file),
+	})
+}
+
+async function openDesktopWriteFileStream(
+	path: Android.FsPath,
+	options?: UnifiedOpenWriteFileStreamOptions
+): Promise<WritableStream<Uint8Array<ArrayBufferLike>>> {
+	throwIfAborted((options as { signal?: AbortSignal } | undefined)?.signal)
+	const offset = mapStreamOffset((options as { offset?: number } | undefined)?.offset)
+	const signal = (options as { signal?: AbortSignal } | undefined)?.signal
+	const file = await TauriFs.open(mapDesktopPath(path), mapDesktopWriteStreamOptions(options))
+	desktopStreamHandles.add(file)
+	if (offset != null) {
+		await file.seek(offset, TauriFs.SeekMode.Start)
+	}
+
+	return new WritableStream<Uint8Array<ArrayBufferLike>>({
+		start: controller => {
+			signal?.addEventListener('abort', () => {
+				void closeDesktopFileHandle(file).finally(() => controller.error(signal.reason ?? new Error('The operation was aborted.')))
+			}, { once: true })
+		},
+		async write(chunk) {
+			throwIfAborted(signal)
+			let written = 0
+			while (written < chunk.byteLength) {
+				const next = await file.write(chunk.subarray(written))
+				if (next <= 0) {
+					throw new Error('Unable to write stream chunk.')
+				}
+				written += next
+			}
+		},
+		close: () => closeDesktopFileHandle(file),
+		abort: () => closeDesktopFileHandle(file),
+	})
 }
 
 function incrementDesktopPath(path: Android.FsPath, index: number): Android.FsPath {
@@ -394,6 +666,94 @@ export async function writeTextFile(
 	}
 
 	return TauriFs.writeTextFile(mapDesktopPath(path as Android.FsPath), data, options as DesktopWriteTextFileOptions)
+}
+
+/**
+ * Opens a file as a byte `ReadableStream`.
+ *
+ * This is the portable large-file read API. It reads chunks on demand instead
+ * of loading the whole file into WebView memory. Desktop uses
+ * `@tauri-apps/plugin-fs.open`; Android and iOS keep native file descriptors
+ * open until the stream reaches EOF, is canceled, errors, or the abort signal
+ * fires.
+ *
+ * @param path File path, file URL, Android file URI, or iOS file URI.
+ * @param options Chunk size, optional start offset, abort signal, and desktop
+ * open options where applicable.
+ */
+export async function openReadFileStream(
+	path: VnidropFsPath,
+	options?: UnifiedOpenReadFileStreamOptions
+): Promise<ReadableStream<Uint8Array<ArrayBuffer>>> {
+	if (Android.isAndroid()) {
+		return Android.openReadFileStream(path as Android.FsPath | Android.AndroidFsUri, options as Android.AndroidOpenReadFileStreamOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.openReadFileStream(path as Ios.FsPath | Ios.IosFsUri, options as Ios.IosOpenReadFileStreamOptions)
+	}
+
+	return openDesktopReadFileStream(path as Android.FsPath, options)
+}
+
+/**
+ * Opens a file as a byte `WritableStream`.
+ *
+ * This is the portable large-file write API. It sends chunks to native code as
+ * the stream is written, avoiding whole-file buffering. Desktop uses
+ * `@tauri-apps/plugin-fs.open`; Android and iOS keep native file descriptors
+ * open until the stream is closed, aborted, errors, or the abort signal fires.
+ *
+ * @param path Destination path, file URL, Android file URI, or iOS file URI.
+ * @param options Creation/append/truncate behavior, optional write offset,
+ * chunk size, abort signal, and desktop open options where applicable.
+ */
+export async function openWriteFileStream(
+	path: VnidropFsPath,
+	options?: UnifiedOpenWriteFileStreamOptions
+): Promise<WritableStream<Uint8Array<ArrayBufferLike>>> {
+	if (Android.isAndroid()) {
+		return Android.openWriteFileStream(path as Android.FsPath | Android.AndroidFsUri, options as Android.AndroidOpenWriteFileStreamOptions)
+	}
+	if (Ios.isIos()) {
+		return Ios.openWriteFileStream(path as Ios.FsPath | Ios.IosFsUri, options as Ios.IosOpenWriteFileStreamOptions)
+	}
+
+	return openDesktopWriteFileStream(path as Android.FsPath, options)
+}
+
+/**
+ * Forcibly closes every native file stream opened by this plugin.
+ *
+ * Use this as a cleanup escape hatch during app shutdown, failed stream
+ * operations, or test teardown. Existing JavaScript stream objects should be
+ * discarded after this call.
+ */
+export async function closeAllFileStreams(): Promise<void> {
+	if (Android.isAndroid()) {
+		return Android.closeAllFileStreams()
+	}
+	if (Ios.isIos()) {
+		return Ios.closeAllFileStreams()
+	}
+
+	await Promise.all([...desktopStreamHandles].map(file => closeDesktopFileHandle(file)))
+}
+
+/**
+ * Returns the number of currently open file streams owned by this plugin.
+ *
+ * On desktop this counts streams opened through the portable root API. On
+ * mobile it asks the native backend for its open descriptor/resource count.
+ */
+export async function countAllFileStreams(): Promise<number> {
+	if (Android.isAndroid()) {
+		return Android.countAllFileStreams()
+	}
+	if (Ios.isIos()) {
+		return Ios.countAllFileStreams()
+	}
+
+	return desktopStreamHandles.size
 }
 
 /**

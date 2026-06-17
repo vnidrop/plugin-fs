@@ -5,6 +5,7 @@ mod file_uri;
 mod file_picker;
 mod file_access;
 mod image;
+mod ios_uri;
 mod notification;
 mod storage_volume;
 
@@ -15,6 +16,7 @@ pub use file_uri::*;
 pub use file_picker::*;
 pub use file_access::*;
 pub use image::*;
+pub use ios_uri::*;
 pub use notification::*;
 pub use storage_volume::*;
 

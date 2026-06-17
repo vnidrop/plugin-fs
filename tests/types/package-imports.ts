@@ -2,6 +2,8 @@ import {
 	createNewDir,
 	createNewFile,
 	getPlatformFsCapabilities,
+	openReadFileStream,
+	openWriteFileStream,
 	readTextFile,
 	showOpenDirPicker,
 	showOpenFilePicker,
@@ -17,6 +19,8 @@ import {
 } from '@vnidrop/tauri-plugin-fs/android'
 import {
 	listSecurityScopedBookmarks,
+	openReadFileStream as openIosReadFileStream,
+	openWriteFileStream as openIosWriteFileStream,
 	persistSecurityScopedBookmark,
 	type IosFsUri,
 } from '@vnidrop/tauri-plugin-fs/ios'
@@ -24,6 +28,8 @@ import {
 async function checkRootImports(path: string): Promise<void> {
 	await writeTextFile(path, 'body')
 	const text: string = await readTextFile(path)
+	const readStream: ReadableStream<Uint8Array<ArrayBuffer>> = await openReadFileStream(path)
+	const writeStream: WritableStream<Uint8Array<ArrayBufferLike>> = await openWriteFileStream(path, { create: true })
 	const file: PickedFile | undefined = (await showOpenFilePicker())[0]
 	const dir: PickedDirectory | null = await showOpenDirPicker()
 	const newFile = await createNewFile(path)
@@ -31,6 +37,8 @@ async function checkRootImports(path: string): Promise<void> {
 	const capabilities = getPlatformFsCapabilities()
 
 	void text
+	void readStream
+	void writeStream
 	void file
 	void dir
 	void newFile
@@ -49,9 +57,13 @@ async function checkAndroidImports(uri: AndroidFsUri): Promise<void> {
 async function checkIosImports(uri: IosFsUri): Promise<void> {
 	const persisted = await persistSecurityScopedBookmark(uri)
 	const bookmarks: IosFsUri[] = await listSecurityScopedBookmarks()
+	const readStream = await openIosReadFileStream(uri)
+	const writeStream = await openIosWriteFileStream(uri, { create: true })
 
 	void persisted
 	void bookmarks
+	void readStream
+	void writeStream
 }
 
 void checkRootImports

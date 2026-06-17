@@ -135,6 +135,8 @@ import {
   exists,
   getMetadata,
   getPlatformFsCapabilities,
+  openReadFileStream,
+  openWriteFileStream,
   readDir,
   readTextFile,
   removeDirAll,
@@ -157,6 +159,8 @@ Portable functions include:
 
 - `readFile`, `readTextFile`
 - `writeFile`, `writeTextFile`
+- `openReadFileStream`, `openWriteFileStream`
+- `closeAllFileStreams`, `countAllFileStreams`
 - `readDir`
 - `createDir`, `createNewFile`, `createNewDir`
 - `copyFile`
@@ -215,6 +219,83 @@ if (dir) {
   }
 }
 ```
+
+Copy a large file without loading it into WebView memory:
+
+```ts
+import {
+  openReadFileStream,
+  openWriteFileStream,
+  showOpenFilePicker,
+  showSaveFilePicker,
+} from '@vnidrop/tauri-plugin-fs'
+
+const [source] = await showOpenFilePicker()
+const destination = await showSaveFilePicker('backup.bin', 'application/octet-stream')
+
+if (source && destination) {
+  const input = await openReadFileStream(source, {
+    // Larger chunks reduce IPC overhead. Tune this for your data pipeline.
+    bufferByteLength: 1024 * 1024,
+  })
+  const output = await openWriteFileStream(destination, {
+    create: true,
+    append: false,
+    bufferByteLength: 1024 * 1024,
+  })
+
+  await input.pipeTo(output)
+}
+```
+
+Use `closeAllFileStreams()` as a cleanup escape hatch during app shutdown,
+failed stream operations, or tests. Normal streams release their native handles when
+they reach EOF, close, abort, or error.
+
+## Rust Backend API
+
+Frontend calls are not required for backend filesystem workflows. Register the
+plugin, import `VnidropFsExt`, and use the Rust manager from an `AppHandle`,
+`App`, or command state.
+
+```rust
+use std::io::{Read, Write};
+use tauri_plugin_vnidrop_fs::{VnidropFsExt, VnidropOpenWriteOptions};
+
+fn copy_in_rust<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    source: &std::path::Path,
+    destination: &std::path::Path,
+) -> tauri_plugin_vnidrop_fs::Result<u64> {
+    let fs = app.vnidrop_fs();
+    let mut reader = fs.open_read(source)?;
+    let mut writer = fs.open_write(
+        destination,
+        VnidropOpenWriteOptions::default().create(true),
+    )?;
+
+    let mut buffer = vec![0; 1024 * 1024];
+    let mut copied = 0;
+
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        writer.write_all(&buffer[..read])?;
+        copied += read as u64;
+    }
+
+    writer.flush()?;
+    Ok(copied)
+}
+```
+
+The Rust API accepts normal paths, Android `FileUri` values, and iOS
+`IosFsUri` values. Desktop and app-container paths use `std::fs`. Android URI
+targets use the existing Android file descriptor bridge. iOS `IosFsUri` targets
+use native stream resources so security-scoped access stays active until the
+Rust reader or writer is closed or dropped.
 
 Show different UI for platform-specific capabilities:
 
@@ -369,14 +450,15 @@ iOS supports the shared root API for:
 
 - file, directory, and save pickers
 - read/write bytes and text
+- read/write byte streams
 - directory listing
 - create and unique create
 - copy, rename, remove
 - metadata and existence checks
 - security-scoped bookmark list/resolve/release/persist helpers
 
-Android public storage, thumbnails, streams, and share/view intents are not iOS
-features and remain Android-only.
+Android public storage, thumbnails, line streams, and share/view intents are not
+iOS features and remain Android-only.
 
 ## Testing
 
@@ -405,6 +487,17 @@ cd examples/tauri-app
 npm install
 npm run tauri dev
 ```
+
+Run the Rust-side example app:
+
+```sh
+cd examples/tauri-rust-side-app
+npm install
+npm run tauri dev
+```
+
+This second example keeps filesystem logic in Rust commands with
+`app.vnidrop_fs()`. The frontend only handles picker UI and command invocation.
 
 iOS simulator:
 
